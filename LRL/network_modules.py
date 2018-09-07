@@ -4,7 +4,7 @@ from .utils import *
 class NoisyLinear(nn.Module):
     """NoisyLinear module for Noisy Net exploration technique"""
     
-    def __init__(self, in_features, out_features, std_init=0.4):
+    def __init__(self, in_features, out_features, std_init=0.6):  # original paper: std_init = 0.4
         super(NoisyLinear, self).__init__()
         
         self.in_features  = in_features
@@ -17,6 +17,7 @@ class NoisyLinear(nn.Module):
         self.bias_mu    = nn.Parameter(Tensor(out_features), requires_grad=True)
         self.bias_sigma = nn.Parameter(Tensor(out_features), requires_grad=True)
         
+        self.noise = Tensor(1)  # https://discuss.pytorch.org/t/where-is-the-noise-layer-in-pytorch/2887/4
         self.reset_parameters()
     
     def forward(self, x):
@@ -44,11 +45,8 @@ class NoisyLinear(nn.Module):
     
     def _scaled_noise(self, size):
         # returns scaled noise of given size
-        if USE_CUDA:
-            x = torch.randn(size).cuda()
-        else:
-            x = torch.randn(size)
-        return x.sign().mul(x.abs().sqrt())
+        sampled_noise = self.noise.repeat(size).normal_()
+        return sampled_noise.sign().mul(sampled_noise.abs().sqrt())
         
     def magnitude(self):
         # returns summed magnitudes of noise and number of noisy parameters

@@ -39,13 +39,16 @@ def NstepReplay(parclass):
         self.replay_buffer_nsteps = pickle.load(mem_f)
   return NstepReplay
   
-#?            
-'''
-class CollectiveNstepReplayBufferAgent(NstepReplayBufferAgent):
+
+def NstepReplay(parclass):
+  """Requires parclass inherited from ReplayBufferAgent.
+  Already inherits from NstepReplayBufferAgent"""
+  
+  class CollectiveNstepReplayBufferAgent(NstepReplayBufferAgent(parclass)):
     """
     Experimental. Stores all transitions from transitions on one step to transitions on n steps.
     """
-    __doc__ += NstepReplayBufferAgent.__doc__
+    __doc__ += NstepReplayBufferAgent(parclass).__doc__
         
     def memorize(self, state, action, reward, next_state, done):
         self.nstep_buffer.append((state, action, reward, next_state))
@@ -61,4 +64,4 @@ class CollectiveNstepReplayBufferAgent(NstepReplayBufferAgent):
             
         if done:
             self.nstep_buffer = []
-'''
+

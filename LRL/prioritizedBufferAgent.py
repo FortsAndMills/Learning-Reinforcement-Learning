@@ -45,6 +45,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):
         return np.concatenate(states), actions, rewards, np.concatenate(next_states), dones, weights
 
     def update_priorities(self, batch_priorities):
+        #self.priorities[self.batch_indices] = batch_priorities + 1e-5
         self.priorities[self.batch_indices] = (batch_priorities + 1e-5).clip(max=1)
             
     def write_memory(self, mem_f):

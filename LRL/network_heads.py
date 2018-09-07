@@ -37,6 +37,20 @@ class QnetworkHead(nn.Module):
         '''returns average magnitude of the whole net'''
         mag, n_params = sum([np.array(noisy_layer.magnitude()) for noisy_layer in self.noisy_layers])
         return mag / n_params
+        
+class Vnetwork(QnetworkHead):
+    '''V-network head supposing env has next_states function'''
+    def __init__(self, feature_extractor_net, feature_size, noisy, env): 
+        super().__init__(feature_extractor_net, feature_size, noisy, env)       
+        self.head = nn.Linear(self.feature_size, 1)
+        self.next_states = env.next_states_function
+        
+    def forward(self, state):
+        next_states, r, done = self.next_states(state)
+        next_states = next_states.view(state.size()[0] * self.num_actions, -1)
+        
+        next_states = self.feature_extractor_net(next_states)
+        return r + (1 - done) * self.head(next_states).view(state.size()[0], self.num_actions)
 
 class Qnetwork(QnetworkHead):
     '''Simple Q-network head'''
@@ -75,8 +89,8 @@ class CategoricalQnetworkHead(QnetworkHead):
         return output.gather(1, action_b.unsqueeze(1).unsqueeze(1).expand(output.size(0), 1, output.size(2))).squeeze(1)
     
     def value(self, output):
-        return self.gather(output, self.greedy(output))    
-        
+        return self.gather(output, self.greedy(output))
+               
 class CategoricalQnetwork(CategoricalQnetworkHead):
     '''Simple categorical DQN head'''
     def __init__(self, feature_extractor_net, feature_size, noisy, env, num_atoms, support):

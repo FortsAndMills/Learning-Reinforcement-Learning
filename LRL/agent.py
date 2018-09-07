@@ -56,7 +56,7 @@ class Agent():
         
         for t in count():
             a = self.act(ob)
-            ob, r, done, _ = self.env.step(a)
+            ob, r, done, info = self.env.step(a)
             
             if learn:
                 self.see(prev_ob, a, r, ob, done)
@@ -71,7 +71,7 @@ class Agent():
                 img = plt.imshow(self.env.render(mode='rgb_array'))
                 plt.show()
             
-            if done:
+            if done or ("died" in info and info["died"]):
                 break
                 
         if record:
