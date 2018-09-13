@@ -90,7 +90,7 @@ class CategoricalQnetworkHead(QnetworkHead):
     
     def value(self, output):
         return self.gather(output, self.greedy(output))
-               
+
 class CategoricalQnetwork(CategoricalQnetworkHead):
     '''Simple categorical DQN head'''
     def __init__(self, feature_extractor_net, feature_size, noisy, env, num_atoms, support):

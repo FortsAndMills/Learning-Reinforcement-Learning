@@ -21,7 +21,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):
         self.rp_alpha = rp_alpha 
         self.rp_beta_by_frame = lambda frame_idx: min(1.0, rp_beta_start + frame_idx * (1.0 - rp_beta_start) / rp_beta_frames)
 
-    def memorize(self, state, action, reward, next_state, done):
+    def memorize(self, state, action, reward, next_state, done, died):
         max_priority = max(self.priorities) if self.buffer else 1.0
         
         if len(self) < self.replay_buffer_capacity:
@@ -29,7 +29,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):
         else:
             self.priorities[self.pos] = max_priority
             
-        super().memorize(state, action, reward, next_state, done)
+        super().memorize(state, action, reward, next_state, done, died)
 
     def sample(self, batch_size):
         probs  = np.array(self.priorities) ** self.rp_alpha

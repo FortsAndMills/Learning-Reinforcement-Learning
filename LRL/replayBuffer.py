@@ -18,7 +18,7 @@ class ReplayBufferAgent(Agent):
         self.buffer = []
         self.pos = 0
     
-    def memorize(self, state, action, reward, next_state, done):
+    def memorize(self, state, action, reward, next_state, done, died):
         """Remember transition"""
         state      = np.expand_dims(state, 0)
         next_state = np.expand_dims(next_state, 0)
@@ -30,9 +30,9 @@ class ReplayBufferAgent(Agent):
         
         self.pos = (self.pos + 1) % self.replay_buffer_capacity
         
-    def see(self, state, action, reward, next_state, done):
-        self.memorize(state, action, reward, next_state, done)       
-        super().see(state, action, reward, next_state, done)
+    def see(self, state, action, reward, next_state, done, died):
+        self.memorize(state, action, reward, next_state, done, died)       
+        super().see(state, action, reward, next_state, done, died)
     
     def sample(self, batch_size):
         """

@@ -60,8 +60,8 @@ def QAgent(parclass):
             self.qualities = self.policy_net(state)
             return self.policy_net.greedy(self.qualities).cpu().numpy()[0]
 
-    def see(self, state, action, reward, next_state, done):
-        super().see(state, action, reward, next_state, done)
+    def see(self, state, action, reward, next_state, done, died):
+        super().see(state, action, reward, next_state, done, died)
         
         self.optimize_model()
         

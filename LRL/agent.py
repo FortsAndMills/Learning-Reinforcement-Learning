@@ -20,7 +20,7 @@ class Agent():
         """Responce on observation of enviroment"""
         return self.random_act()
     
-    def see(self, state, action, reward, next_state, done):
+    def see(self, state, action, reward, next_state, done, died):
         """Learning from new transition observed"""
         self.frames_done += 1
         
@@ -57,9 +57,10 @@ class Agent():
         for t in count():
             a = self.act(ob)
             ob, r, done, info = self.env.step(a)
+            died = "died" in info and info["died"]
             
             if learn:
-                self.see(prev_ob, a, r, ob, done)
+                self.see(prev_ob.copy(), a, r, ob.copy(), done, died)
             
             R += r
             prev_ob = ob
@@ -71,7 +72,7 @@ class Agent():
                 img = plt.imshow(self.env.render(mode='rgb_array'))
                 plt.show()
             
-            if done or ("died" in info and info["died"]):
+            if done or died:
                 break
                 
         if record:

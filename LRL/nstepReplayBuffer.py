@@ -17,15 +17,15 @@ def NstepReplay(parclass):
         self.replay_buffer_nsteps = replay_buffer_nsteps
         self.nstep_buffer = []
     
-    def memorize(self, state, action, reward, next_state, done):        
+    def memorize(self, state, action, reward, next_state, done, died):        
         self.nstep_buffer.append((state, action, reward, next_state))
         
         if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
             nstep_reward = sum([self.nstep_buffer[i][2] * (self.gamma**i) for i in range(self.replay_buffer_nsteps)])
             state, action, _, _ = self.nstep_buffer.pop(0)
-            super().memorize(state, action, nstep_reward, next_state, done)
+            super().memorize(state, action, nstep_reward, next_state, done, died)
             
-        if done:
+        if done or died:
             self.nstep_buffer = []
             
     def write_memory(self, mem_f):
@@ -40,28 +40,29 @@ def NstepReplay(parclass):
   return NstepReplay
   
 
-def NstepReplay(parclass):
+def CollectiveNstepReplayBufferAgent(parclass):
   """Requires parclass inherited from ReplayBufferAgent.
-  Already inherits from NstepReplayBufferAgent"""
+  Already inherits from NstepReplay"""
   
-  class CollectiveNstepReplayBufferAgent(NstepReplayBufferAgent(parclass)):
+  class CollectiveNstepReplayBufferAgent(NstepReplay(parclass)):
     """
     Experimental. Stores all transitions from transitions on one step to transitions on n steps.
     """
-    __doc__ += NstepReplayBufferAgent(parclass).__doc__
+    __doc__ += NstepReplay(parclass).__doc__
         
-    def memorize(self, state, action, reward, next_state, done):
+    def memorize(self, state, action, reward, next_state, done, died):
         self.nstep_buffer.append((state, action, reward, next_state))
         
         R = 0
         for i in range(len(self.nstep_buffer) - 1, -1, -1):
             R *= self.gamma
             R += self.nstep_buffer[i][2] * self.gamma
-            ReplayBufferAgent.memorize(self, self.nstep_buffer[i][0], self.nstep_buffer[i][1], R, next_state, done)           
+            ReplayBufferAgent.memorize(self, self.nstep_buffer[i][0], self.nstep_buffer[i][1], R, next_state, done, died)           
         
         if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
             self.nstep_buffer.pop(0)
             
-        if done:
+        if done or died:
             self.nstep_buffer = []
+  return CollectiveNstepReplayBufferAgent
 

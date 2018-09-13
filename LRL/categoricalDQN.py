@@ -53,7 +53,7 @@ def CategoricalQAgent(parclass):
             offset = offset.cuda()
             proj_dist = proj_dist.cuda()     
               
-        proj_dist.view(-1).index_add_(0, (l + offset).view(-1), (next_dist * (u.float() - b)).view(-1))
+        proj_dist.view(-1).index_add_(0, (l + offset).view(-1), (next_dist * (u.float()+ (b.ceil() == b).float() - b)).view(-1))
         proj_dist.view(-1).index_add_(0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1))
         proj_dist /= proj_dist.sum(1).unsqueeze(1)
         return proj_dist
