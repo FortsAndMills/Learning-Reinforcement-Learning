@@ -13,7 +13,7 @@ Algorithms from DQN to Rainbow with unified interface.
 * JSAnimation
 
 ## Sources of code and inspiration:
-* [RL Adventure](https://github.com/higgsfield/RL-Adventure) - beware of bugs!
+* [RL Adventure](https://github.com/higgsfield/RL-Adventure), [RL Adventure pt.2](https://github.com/higgsfield/RL-Adventure-2) - beware of bugs!
 * [DeepRL Tutorials](https://github.com/qfettes/DeepRL-Tutorials)
 
 # UPDATES
