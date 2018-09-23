@@ -18,4 +18,4 @@ Algorithms from DQN to Rainbow with unified interface.
 
 # UPDATES
 specially for my beloved scientific advisor:
-* **23/09/18** Added detailed review of basic policy gradient algorithms: baselines for REINFORCE, Advantage Actor-Critic. Minor updates on rubik's cube solution attempts.
+* **23/09/18** Added detailed review of basic policy gradient algorithms: baselines for REINFORCE, Actor-Critic, Advantage Actor-Critic. Minor updates on rubik's cube solution attempts.
