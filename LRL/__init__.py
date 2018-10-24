@@ -1,4 +1,7 @@
 from .preprocessing import atari_wrappers
+from .preprocessing import multiprocessing_env
+from .preprocessing.multiprocessing_env import DummyVecEnv, SubprocVecEnv
+
 from .utils import *
 from .network_modules import *
 from .network_heads import *
@@ -12,5 +15,7 @@ from .DQN import *
 from .targetDQN import *
 from .doubleDQN import *
 from .categoricalDQN import *
+
+from .A2C import *
 
 from .eGreedy import *

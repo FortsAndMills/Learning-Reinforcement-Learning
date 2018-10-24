@@ -1,4 +1,5 @@
 from .utils import *
+from .preprocessing.multiprocessing_env import VecEnv, DummyVecEnv, SubprocVecEnv
 
 class Agent():
     """
@@ -9,11 +10,14 @@ class Agent():
     """
     
     def __init__(self, env):
-        self.env = env
+        self.env = env            
+        
+        self.initialized = False    
         self.frames_done = 0
         self.rewards_log = []
     
     def random_act(self):
+        """choose random action"""
         return self.env.action_space.sample()
     
     def act(self, state):
@@ -82,6 +86,31 @@ class Agent():
             self.rewards_log.append(R)
         
         return R
+        
+    def play_parallel(self, frames_limit=1000):
+        """Play frames_limit frames for several games in parallel"""
+        if not self.initialized:
+            self.ob = env.reset()       
+            self.prev_ob = self.ob
+            self.R = np.array([0. for _ in range(env.num_envs)])
+            self.initialized = True
+        
+        self.learn = True       
+
+        for t in range(frames_limit):
+            a = self.act(self.ob)
+            self.ob, r, done, info = self.env.step(a)
+            
+            # TODO: died case!
+            
+            self.see(self.prev_ob.copy(), a, r, self.ob.copy(), done, False)
+            
+            self.R += r
+            for res in self.R[done]:
+                self.rewards_log.append(res)
+                
+            self.R[done] = 0
+            self.prev_ob = self.ob
     
     def write(self, f):
         pickle.dump(self.frames_done, f)

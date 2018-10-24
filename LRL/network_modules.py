@@ -1,6 +1,5 @@
 from .utils import *
 
-#TODO: needs commentaries
 class NoisyLinear(nn.Module):
     """NoisyLinear module for Noisy Net exploration technique"""
     
@@ -18,10 +17,12 @@ class NoisyLinear(nn.Module):
         self.bias_sigma = nn.Parameter(Tensor(out_features), requires_grad=True)
         
         self.noise = Tensor(1)  # https://discuss.pytorch.org/t/where-is-the-noise-layer-in-pytorch/2887/4
-        self.reset_parameters()
+        self.reset_parameters() # initialize prior noise distribution
     
     def forward(self, x):
         if self.training:
+            # hack: we need to generate matrix in x out, but that's too many samples
+            # instead we generate in + out noises and multiply them pairwise
             epsilon_in  = self._scaled_noise(self.in_features)
             epsilon_out = self._scaled_noise(self.out_features)
             
@@ -34,7 +35,7 @@ class NoisyLinear(nn.Module):
         return F.linear(x, weight, bias)
     
     def reset_parameters(self):
-        # parameters initialisation
+        # parameters initialisation: taken from source paper
         mu_range = 1 / math.sqrt(self.weight_mu.size(1))
         
         self.weight_mu.data.uniform_(-mu_range, mu_range)

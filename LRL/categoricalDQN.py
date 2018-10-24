@@ -28,7 +28,7 @@ def CategoricalQAgent(parclass):
         super().__init__(*args, **kwargs)
             
     def init_network(self):
-        net = self.QnetworkHead(self.FeatureExtractorNet, self.features_size, self.noisy, self.env, self.num_atoms, self.support)
+        net = self.QnetworkHead(self.FeatureExtractorNet, self.noisy, self.env, self.num_atoms, self.support)
         net.after_init()
         return net
     

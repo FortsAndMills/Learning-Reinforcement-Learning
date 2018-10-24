@@ -12,7 +12,6 @@ def QAgent(parclass):
     
     Args:
         FeatureExtractorNet - class inherited from nn.Module
-        features_size - length of output of feature extractor, int
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
         noisy - use NoisyLinear instead of Linear layers if true, bool
         gamma - infinite horizon protection, float, from 0 to 1
@@ -23,12 +22,11 @@ def QAgent(parclass):
     """
     __doc__ += parclass.__doc__
     
-    def __init__(self, FeatureExtractorNet, features_size, QnetworkHead = Qnetwork, noisy = False, gamma=0.99, batch_size=32, replay_buffer_init=1000, 
+    def __init__(self, FeatureExtractorNet, QnetworkHead = Qnetwork, noisy = False, gamma=0.99, batch_size=32, replay_buffer_init=1000, 
                        optimizer=optim.Adam, optimizer_args={}, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         self.FeatureExtractorNet = FeatureExtractorNet
-        self.features_size = features_size
         self.QnetworkHead = QnetworkHead
         self.noisy = noisy
         
@@ -45,7 +43,7 @@ def QAgent(parclass):
         
     def init_network(self):
         '''create a new Q-network'''
-        net = self.QnetworkHead(self.FeatureExtractorNet, self.features_size, self.noisy, self.env)        
+        net = self.QnetworkHead(self.FeatureExtractorNet, self.noisy, self.env)        
         net.after_init()
         return net
     
