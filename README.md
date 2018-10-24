@@ -19,4 +19,17 @@ Algorithms from DQN to Rainbow with unified interface.
 # UPDATES
 specially for my beloved scientific advisor:
 * **23/09/18** Added detailed review of basic policy gradient algorithms: baselines for REINFORCE, Actor-Critic, Advantage Actor-Critic. Minor updates on rubik's cube solution attempts.
-* **03/10/18** Several more HER experiments failed :( HER code for Rubik cleared, bug fixes; no improvement in quality though :(
+* **03/10/18** Several more HER experiments failed :( HER code for Rubik cleared, bug fixes;
+* **24/10/18** Finally achieved first results with multiprocessing policy gradient algorithm! First attempt to incorporate policy gradient interface into library + support for multiprocessing environments. A lot of work to do yet...
+
+### PLANS:
+* Add DDPG, HER and bugfixes to theory overview.
+* Polish interface for better working.
+* Acceleration of Rainbow still possible.
+* Multiprocessing environments support for value-based algorithms.
+* My resulting library implementation of A2C seems to learn 2 times slowly on Pong; some technical things to fix.
+* Check other environments.
+* Continue theory exploration (minimal program: R2D2, TRPO, model-based stuff)
+* Continue implementing algorithms to the library (next: DDPG?)
+* Check code from other sources (Yandex Practical RL, OpenAI baselines)
+
