@@ -65,6 +65,7 @@ def A2C(parclass):
         self.actions[self.step].copy_(LongTensor(action).view(-1, 1))
         self.rewards[self.step].copy_(Tensor(reward).view(-1, 1))
         self.masks[self.step + 1].copy_(Tensor(1 - done).view(-1, 1))
+        
         self.step = (self.step + 1) % self.rollout
         
         if self.step == 0:

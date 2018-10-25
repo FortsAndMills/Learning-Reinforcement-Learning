@@ -140,12 +140,22 @@ class ActorCriticHead(Head):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
-        self.actor_head = self.linear(self.feature_size, self.num_actions)        
-        self.critic_head = self.linear(self.feature_size, 1)
+        init_ = lambda m: self.layer_init(m, nn.init.orthogonal_,
+          lambda x: nn.init.constant_(x, 0))
+        self.actor_head = init_(self.linear(self.feature_size, self.num_actions))
+        
+        init_ = lambda m: self.layer_init(m, nn.init.orthogonal_,
+              lambda x: nn.init.constant_(x, 0), gain=0.01)        
+        self.critic_head = init_(self.linear(self.feature_size, 1))
         
     def forward(self, state):
         features = self.feature_extractor_net(state)
         return Categorical(logits=self.actor_head(features)), self.critic_head(features)
+        
+    def layer_init(self, module, weight_init, bias_init, gain=1):
+        weight_init(module.weight.data, gain=gain)
+        bias_init(module.bias.data)
+        return module
         
 class SeparatedActorCriticHead(Head):
     '''Separate two nets for actor-critic '''

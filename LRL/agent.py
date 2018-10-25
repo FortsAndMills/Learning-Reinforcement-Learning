@@ -90,9 +90,9 @@ class Agent():
     def play_parallel(self, frames_limit=1000):
         """Play frames_limit frames for several games in parallel"""
         if not self.initialized:
-            self.ob = env.reset()       
+            self.ob = self.env.reset()       
             self.prev_ob = self.ob
-            self.R = np.array([0. for _ in range(env.num_envs)])
+            self.R = np.array([0. for _ in range(self.env.num_envs)])
             self.initialized = True
         
         self.learn = True       
