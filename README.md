@@ -21,9 +21,9 @@ specially for my beloved scientific advisor:
 * **23/09/18** Added detailed review of basic policy gradient algorithms: baselines for REINFORCE, Actor-Critic, Advantage Actor-Critic. Minor updates on rubik's cube solution attempts.
 * **03/10/18** Several more HER experiments failed :( HER code for Rubik cleared, bug fixes;
 * **24/10/18** Finally achieved first results with multiprocessing policy gradient algorithm! First attempt to incorporate policy gradient interface into library + support for multiprocessing environments. A lot of work to do yet...
+* **02/11/18** Theory update: DDPG, GAE, HER, bugfixes
 
 ### PLANS:
-* Add DDPG, GAE, HER and bugfixes to theory overview.
 * Polish interface for better working.
 * Acceleration of Rainbow still possible.
 * Multiprocessing environments support for value-based algorithms.
