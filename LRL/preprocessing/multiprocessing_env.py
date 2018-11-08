@@ -4,6 +4,9 @@ from multiprocessing import Process, Pipe
 from abc import ABC, abstractmethod
 
 from collections import OrderedDict
+import gym
+import gym.spaces
+from gym import spaces
 
 
 def copy_obs_dict(obs):
@@ -403,6 +406,6 @@ class DummyVecEnv(VecEnv):
 
     def render(self, mode='human'):
         if self.num_envs == 1:
-            self.envs[0].render(mode=mode)
+            return self.envs[0].render(mode=mode)
         else:
-            super().render(mode=mode)
+            return super().render(mode=mode)

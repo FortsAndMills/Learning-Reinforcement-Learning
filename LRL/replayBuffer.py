@@ -10,15 +10,16 @@ class ReplayBufferAgent(Agent):
     """
     __doc__ += Agent.__doc__
     
-    def __init__(self, replay_buffer_capacity=100000, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
         
-        self.replay_buffer_capacity = replay_buffer_capacity
+        self.replay_buffer_capacity = config.get("replay_buffer_capacity", 100000)
+        
         self.replay_buffer_nsteps = 1
         self.buffer = []
         self.pos = 0
     
-    def memorize(self, state, action, reward, next_state, done, died):
+    def memorize_transition(self, state, action, reward, next_state, done):
         """Remember transition"""
         state      = np.expand_dims(state, 0)
         next_state = np.expand_dims(next_state, 0)
@@ -29,10 +30,15 @@ class ReplayBufferAgent(Agent):
             self.buffer[self.pos] = (state, action, reward, next_state, done)
         
         self.pos = (self.pos + 1) % self.replay_buffer_capacity
-        
-    def see(self, state, action, reward, next_state, done, died):
-        self.memorize(state, action, reward, next_state, done, died)       
-        super().see(state, action, reward, next_state, done, died)
+    
+    def memorize(self, state, action, reward, next_state, done):
+        """Remember batch of transitions"""
+        for s, a, r, ns, d in zip(state, action, reward, next_state, done):
+            self.memorize_transition(s, a, r, ns, d)
+    
+    def see(self, state, action, reward, next_state, done):
+        self.memorize(state, action, reward, next_state, done)
+        super().see(state, action, reward, next_state, done)
     
     def sample(self, batch_size):
         """

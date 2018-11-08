@@ -12,20 +12,20 @@ def TargetQAgent(parclass):
     '''
     __doc__ += parclass.__doc__
     
-    def __init__(self, target_update=100, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
 
         self.target_net = self.init_network() 
         self.unfreeze()
 
-        self.target_update = target_update
+        self.target_update = config.get("target_update", 100)
 
     def unfreeze(self):
         '''copy policy net weights to target net'''
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
-    def see(self, state, action, reward, next_state, done, died):
-        super().see(state, action, reward, next_state, done, died)
+    def see(self, state, action, reward, next_state, done):
+        super().see(state, action, reward, next_state, done)
 
         if self.frames_done % self.target_update == 0:
             self.unfreeze()

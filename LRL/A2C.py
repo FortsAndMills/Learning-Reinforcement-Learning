@@ -12,9 +12,10 @@ def A2C(parclass):
     
     Args:
         FeatureExtractorNet - class inherited from nn.Module
-        head - class of Actor-Critic network head, ActorCriticHead or SeparatedActorCriticHead
+        ActorCriticHead - class of Actor-Critic network head, ActorCriticHead or SeparatedActorCriticHead
         rollout - number of frames for one iteration of updating NN weights
-        noisy - use NoisyLinear instead of Linear layers if true, bool
+        linear_layer - default linear layer, nn.Linear or NoisyLinear
+        linear_layer_init - initialization of linear layers function
         gamma - infinite horizon protection, float, from 0 to 1
         entropy_loss_weight - weight of additional entropy loss
         critic_loss_weight - weight of critic loss
@@ -24,33 +25,35 @@ def A2C(parclass):
     """
     __doc__ += parclass.__doc__
     
-    def __init__(self, FeatureExtractor, head=ActorCriticHead, rollout=5, noisy=False, gamma=0.99, entropy_loss_weight=0.0, critic_loss_weight=1.0, 
-                 optimizer=optim.Adam, optimizer_args={}, grad_norm_max=1, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.gamma = gamma
-        self.critic_loss_weight = critic_loss_weight
-        self.entropy_loss_weight = entropy_loss_weight
-        self.rollout = rollout
-        self.noisy = noisy
+    def __init__(self, config):
+        super().__init__(config)
+        self.gamma = config.get("gamma", 0.99)
+        self.critic_loss_weight = config.get("critic_loss_weight", 1)
+        self.entropy_loss_weight = config.get("entropy_loss_weight", 0)
+        self.rollout = config.get("rollout", 5)
+        self.grad_norm_max = config.get("grad_norm_max", 1)
         
-        self.net = head(FeatureExtractor, self.noisy, self.env)
-        self.net.after_init()
-            
-        self.optimizer = optimizer(self.net.parameters(), **optimizer_args)
-        self.grad_norm_max = grad_norm_max
-
-        self.observations = Tensor(size=(self.rollout + 1, self.env.num_envs, *self.env.observation_space.shape)).zero_()
+        self.net = self.init_network()
+        self.optimizer = config.get("optimizer", optim.Adam)(self.net.parameters(), **config.get("optimizer_args", {}))
+        
+        self.observations = Tensor(size=(self.rollout + 1, self.env.num_envs, *config["observation_shape"])).zero_()
         self.rewards = Tensor(size=(self.rollout, self.env.num_envs, 1)).zero_()
         self.actions = LongTensor(size=(self.rollout, self.env.num_envs, 1)).zero_()
         self.masks = Tensor(size=(self.rollout + 1, self.env.num_envs, 1)).zero_()
         self.returns = Tensor(size=(self.rollout + 1, self.env.num_envs, 1)).zero_()
         self.step = 0
-
-        self.actor_loss_log = []
-        self.critic_loss_log = []
-        self.entropy_loss_log = []        
-        if self.noisy:
-            self.magnitude_log = []
+        
+        self.logger_labels["actor_loss"] = ("training iteration", "loss")
+        self.logger_labels["critic_loss"] = ("training iteration", "loss")
+        self.logger_labels["entropy_loss"] = ("training iteration", "loss")
+        if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
+            self.logger_labels["magnitude"] = ("training game step", "noise magnitude")
+            
+    def init_network(self):
+        '''create a new ActorCritic-network'''
+        net = self.config.get("ActorCriticHead", ActorCriticHead)(self.config)        
+        net.after_init()
+        return net
 
     def act(self, s):
         with torch.no_grad():
@@ -59,20 +62,19 @@ def A2C(parclass):
 
         return actions.view(-1).cpu().numpy()
     
-    def see(self, state, action, reward, next_state, done, died):
+    def see(self, state, action, reward, next_state, done):
         self.observations[self.step].copy_(Tensor(state))
         self.observations[self.step + 1].copy_(Tensor(next_state))
         self.actions[self.step].copy_(LongTensor(action).view(-1, 1))
         self.rewards[self.step].copy_(Tensor(reward).view(-1, 1))
         self.masks[self.step + 1].copy_(Tensor(1 - done).view(-1, 1))
         
-        self.step = (self.step + 1) % self.rollout
-        
+        self.step = (self.step + 1) % self.rollout        
         if self.step == 0:
             self.update()
             
-            if self.noisy:
-                self.magnitude_log.append(self.policy_net.magnitude())
+            if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
+                self.logger["magnitude"].append(self.policy_net.magnitude())
             
     def update(self):
         """One step of optimization based on rollout memory"""
@@ -109,22 +111,10 @@ def A2C(parclass):
         torch.nn.utils.clip_grad_norm_(self.net.parameters(), self.grad_norm_max)
         self.optimizer.step()
         
-        self.actor_loss_log.append(actor_loss.item())
-        self.critic_loss_log.append(critic_loss.item())
-        self.entropy_loss_log.append(dist_entropy.item())
+        self.logger["actor_loss"].append(actor_loss.item())
+        self.logger["critic_loss"].append(critic_loss.item())
+        self.logger["entropy_loss"].append(dist_entropy.item())
     
-    def write(self, f):
-        super().write(f)
-        pickle.dump(self.actor_loss_log, f)
-        pickle.dump(self.critic_loss_log, f)
-        pickle.dump(self.entropy_loss_log, f)
-        
-    def read(self, f):
-        super().read(f)
-        self.actor_loss_log = pickle.load(f)
-        self.critic_loss_log = pickle.load(f)
-        self.entropy_loss_log = pickle.load(f)
-
     def load(self, name, *args, **kwargs):
         super().load(name, *args, **kwargs)
         self.net.load_state_dict(torch.load(name + "-net"))

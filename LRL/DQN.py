@@ -7,43 +7,41 @@ def QAgent(parclass):
   class QAgent(parclass):
     """
     Classic deep Q-learning algorithm (DQN).
-    Requires parent class inherited from Agent.
     Based on: https://arxiv.org/abs/1312.5602
     
     Args:
         FeatureExtractorNet - class inherited from nn.Module
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
-        noisy - use NoisyLinear instead of Linear layers if true, bool
+        linear_layer - default linear layer, nn.Linear or NoisyLinear
         gamma - infinite horizon protection, float, from 0 to 1
         batch_size - size of batch for optimization on each frame, int
         replay_buffer_init - size of buffer launching q-network optimization
+        optimize_iterations - number of gradient descent steps after one transition, int
         optimizer - class inherited from torch.optimizer, Adam by default
         optimizer_args - arguments for optimizer, dictionary
+        grad_norm_max - max norm of gradients for clipping, float
     """
     __doc__ += parclass.__doc__
     
-    def __init__(self, FeatureExtractorNet, QnetworkHead = Qnetwork, noisy = False, gamma=0.99, batch_size=32, replay_buffer_init=1000, 
-                       optimizer=optim.Adam, optimizer_args={}, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
         
-        self.FeatureExtractorNet = FeatureExtractorNet
-        self.QnetworkHead = QnetworkHead
-        self.noisy = noisy
+        self.gamma = config.get("gamma", 0.99)
+        self.batch_size = config.get("batch_size", 32)
+        self.replay_buffer_init = config.get("replay_buffer_init", 1000)
+        self.optimize_iterations = config.get("optimize_iterations", 1)
+        self.grad_norm_max = config.get("grad_norm_max", 1)
         
         self.policy_net = self.init_network() 
-        self.optimizer = optimizer(self.policy_net.parameters(), **optimizer_args)
+        self.optimizer = config.get("optimizer", optim.Adam)(self.policy_net.parameters(), **config.get("optimizer_args", {}))
+        
+        self.logger_labels["loss"] = ("training iteration", "loss")
+        if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
+            self.logger_labels["magnitude"] = ("training game step", "noise magnitude")
 
-        self.gamma = gamma
-        self.batch_size = batch_size
-        self.replay_buffer_init = replay_buffer_init
-        
-        self.loss_log = []
-        if self.noisy:
-            self.magnitude_log = []
-        
     def init_network(self):
         '''create a new Q-network'''
-        net = self.QnetworkHead(self.FeatureExtractorNet, self.noisy, self.env)        
+        net = self.config.get("QnetworkHead", Qnetwork)(self.config)        
         net.after_init()
         return net
     
@@ -54,17 +52,17 @@ def QAgent(parclass):
             self.policy_net.eval()
         
         with torch.no_grad():
-            state = Tensor(state).unsqueeze(0)
-            self.qualities = self.policy_net(state)
-            return self.policy_net.greedy(self.qualities).cpu().numpy()[0]
+            self.qualities = self.policy_net(Tensor(state))
+            return self.policy_net.greedy(self.qualities).cpu().numpy()
 
-    def see(self, state, action, reward, next_state, done, died):
-        super().see(state, action, reward, next_state, done, died)
+    def see(self, state, action, reward, next_state, done):
+        super().see(state, action, reward, next_state, done)
         
-        self.optimize_model()
+        for i in range(self.optimize_iterations):
+            self.optimize_model()
         
-        if self.noisy:
-            self.magnitude_log.append(self.policy_net.magnitude())
+        if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
+            self.logger["magnitude"].append(self.policy_net.magnitude())
        
     def estimate_next_state(self, next_state_b):
         '''
@@ -125,31 +123,20 @@ def QAgent(parclass):
         self.update_priorities(self.get_transition_importance(loss_b).detach().cpu().numpy())
         
         loss = (loss_b * weights_b).mean()
-        self.loss_log.append(loss.detach().cpu().numpy())
+        self.logger["loss"].append(loss.detach().cpu().numpy())
         
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.grad_norm_max)
         self.optimizer.step()
     
-    def record_init(self):
-        super().record_init()
-        self.qualities_record = []
-        
     def record_step(self):
         super().record_step()
-        self.qualities_record.append(self.qualities.cpu().numpy())
+        self.record["qualities"].append(self.qualities.cpu().numpy())
         
     def show_record(self):
-        super().show_record()  #TODO
+        super().show_record()  #TODO: show near the game plot of action qualities
     
-    def write(self, f):
-        super().write(f)
-        pickle.dump(self.loss_log, f)
-        
-    def read(self, f):
-        super().read(f)
-        self.loss_log = pickle.load(f)
-
     def load(self, name, *args, **kwargs):
         super().load(name, *args, **kwargs)
         self.policy_net.load_state_dict(torch.load(name + "-qnet"))

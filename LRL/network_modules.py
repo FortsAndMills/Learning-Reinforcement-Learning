@@ -3,7 +3,7 @@ from .utils import *
 class NoisyLinear(nn.Module):
     """NoisyLinear module for Noisy Net exploration technique"""
     
-    def __init__(self, in_features, out_features, std_init=0.6):  # original paper: std_init = 0.4
+    def __init__(self, in_features, out_features, std_init=0.4):  # original paper: std_init = 0.4
         super(NoisyLinear, self).__init__()
         
         self.in_features  = in_features
@@ -52,3 +52,9 @@ class NoisyLinear(nn.Module):
     def magnitude(self):
         # returns summed magnitudes of noise and number of noisy parameters
         return (self.weight_sigma.abs().sum() + self.bias_sigma.abs().sum()).detach().cpu().numpy(), self.in_features*self.out_features + self.out_features
+
+def orthogonal_with_zero_bias_init(module, gain=1):
+    """Initialization seems accelerating A2C"""
+    nn.init.orthogonal_(module.weight.data, gain=gain)
+    nn.init.constant_(module.bias.data, 0)
+    return module

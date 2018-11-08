@@ -2,16 +2,35 @@ from .utils import *
 from .network_modules import *
 
 class Head(nn.Module):
-    '''Abstract class for all q-network heads'''
-    def __init__(self, feature_extractor, noisy, env):
+    '''
+    Abstract class for network heads
+    
+    Args:
+    env - environment with action_space and observation_space defined
+    feature_extractor - class of feature extractor neural net
+    feature_size - size of feature representation outputed by extractor, int
+    linear_layer - class for linear layers in network: nn.Linear of NoisyLinear
+    linear_layer_args - additional arguments for linear_layers (for example, std_init for NoisyLinear)    
+    linear_layer_init - initialization for linear layers 
+    '''
+    
+    def __init__(self, config):
         super().__init__()
         
-        self.linear = NoisyLinear if noisy else nn.Linear
-        self.feature_extractor = feature_extractor
-        self.feature_extractor_net = feature_extractor(self.linear).to(device)
+        class SelectedLinear(config.get("linear_layer", nn.Linear)):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs, **config.get("linear_layer_args", {}))
+                
+                if "linear_layer_init" in config:
+                    config["linear_layer_init"](self)
         
-        self.num_actions = env.action_space.n
-        self.feature_size = self.feature_extractor_net(Tensor(size=(1, *env.observation_space.shape)).to(device)).size()[1]
+        self.linear = SelectedLinear
+        self.feature_extractor_net = config["FeatureExtractor"](self.linear).to(device)
+        
+        self.num_actions = config["num_actions"]
+        if "feature_size" not in config:
+            config["feature_size"] = self.feature_extractor_net(Tensor(size=(1, *config["observation_shape"]))).size()[1]
+        self.feature_size = config["feature_size"]
         
     def after_init(self):
         '''must be called after initialisation'''
@@ -58,11 +77,14 @@ class QnetworkHead(Head):
         
 class Vnetwork(QnetworkHead):
     '''V-network head supposing env has next_states function'''
-    def __init__(self, *args, **kwargs): 
-        super().__init__(*args, **kwargs)
+    def __init__(self, config): 
+        super().__init__(env, config)
             
         self.head = self.linear(self.feature_size, 1)
-        self.next_states = env.next_states_function
+        try:
+            self.next_states = env.next_states_function
+        except:
+            raise Exception("Environment must have next_states_function which by batch of PyTorch states returns all possible next states")
         
     def forward(self, state):
         # emulate all possible next states
@@ -74,8 +96,8 @@ class Vnetwork(QnetworkHead):
 
 class Qnetwork(QnetworkHead):
     '''Simple Q-network head'''
-    def __init__(self, *args, **kwargs): 
-        super().__init__(*args, **kwargs)      
+    def __init__(self, config): 
+        super().__init__(config)      
         self.head = nn.Linear(self.feature_size, self.num_actions)
         
     def forward(self, state):
@@ -84,10 +106,10 @@ class Qnetwork(QnetworkHead):
         
 class DuelingQnetwork(QnetworkHead):
     '''Dueling version of Q-network head'''
-    def __init__(self, *args, **kwargs): 
-        super().__init__(*args, **kwargs)       
-        self.v_head = nn.Linear(feature_size, 1)
-        self.a_head = nn.Linear(feature_size, self.num_actions)
+    def __init__(self, config): 
+        super().__init__(config)       
+        self.v_head = nn.Linear(self.feature_size, 1)
+        self.a_head = nn.Linear(self.feature_size, self.num_actions)
         
     def forward(self, state):
         state = self.feature_extractor_net(state)
@@ -97,10 +119,10 @@ class DuelingQnetwork(QnetworkHead):
         
 class CategoricalQnetworkHead(QnetworkHead):
     '''Abstract class for q-network heads for categorical DQN'''
-    def __init__(self, feature_extractor_net, noisy, env, num_atoms, support):
-        super().__init__(feature_extractor_net, noisy, env)
-        self.num_atoms = num_atoms
-        self.support = support
+    def __init__(self, config):
+        super().__init__(config)
+        self.num_atoms = config["num_atoms"]
+        self.support = config["support"]
     
     def greedy(self, output):
         return (output * self.support).sum(2).max(1)[1]
@@ -113,9 +135,9 @@ class CategoricalQnetworkHead(QnetworkHead):
 
 class CategoricalQnetwork(CategoricalQnetworkHead):
     '''Simple categorical DQN head'''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)       
-        self.head = nn.Linear(feature_size, self.num_actions * self.num_atoms) 
+    def __init__(self, config):
+        super().__init__(config)       
+        self.head = nn.Linear(self.feature_size, self.num_actions * self.num_atoms) 
         
     def forward(self, state):
         state = self.feature_extractor_net(state)
@@ -123,10 +145,10 @@ class CategoricalQnetwork(CategoricalQnetworkHead):
         
 class DuelingCategoricalQnetwork(CategoricalQnetworkHead):
     '''Dueling version of categorical DQN head'''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)    
-        self.v_head = nn.Linear(feature_size, self.num_atoms)
-        self.a_head = nn.Linear(feature_size, self.num_actions * self.num_atoms)    
+    def __init__(self, config):
+        super().__init__(config)    
+        self.v_head = nn.Linear(self.feature_size, self.num_atoms)
+        self.a_head = nn.Linear(self.feature_size, self.num_actions * self.num_atoms)    
         
     def forward(self, state):
         state = self.feature_extractor_net(state)
@@ -137,35 +159,25 @@ class DuelingCategoricalQnetwork(CategoricalQnetworkHead):
         
 class ActorCriticHead(Head):
     '''Separate two nets for actor-critic '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
         
-        init_ = lambda m: self.layer_init(m, nn.init.orthogonal_,
-          lambda x: nn.init.constant_(x, 0))
-        self.actor_head = init_(self.linear(self.feature_size, self.num_actions))
-        
-        init_ = lambda m: self.layer_init(m, nn.init.orthogonal_,
-              lambda x: nn.init.constant_(x, 0), gain=0.01)        
-        self.critic_head = init_(self.linear(self.feature_size, 1))
+        self.actor_head = self.linear(self.feature_size, self.num_actions)      
+        self.critic_head = self.linear(self.feature_size, 1)
         
     def forward(self, state):
         features = self.feature_extractor_net(state)
         return Categorical(logits=self.actor_head(features)), self.critic_head(features)
         
-    def layer_init(self, module, weight_init, bias_init, gain=1):
-        weight_init(module.weight.data, gain=gain)
-        bias_init(module.bias.data)
-        return module
-        
 class SeparatedActorCriticHead(Head):
     '''Separate two nets for actor-critic '''
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
         
         self.head = self.linear(self.feature_size, self.num_actions)
         
         self.critic = nn.Sequential(
-            self.feature_extractor(self.linear),
+            config["FeatureExtractor"](self.linear),
             self.linear(self.feature_size, 1)
         )
         

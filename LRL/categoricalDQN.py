@@ -16,21 +16,14 @@ def CategoricalQAgent(parclass):
     """
     __doc__ += QAgent(parclass).__doc__
     
-    def __init__(self, Vmin=-10, Vmax=10, num_atoms=51, *args, **kwargs):
-        self.Vmin = Vmin
-        self.Vmax = Vmax
-        self.num_atoms = num_atoms
+    def __init__(self, config):
+        self.Vmin = config.get("Vmin", -10)
+        self.Vmax = config.get("Vmax", 10)
+        self.num_atoms = config.get("num_atoms", 51)
         
-        self.support = torch.linspace(self.Vmin, self.Vmax, self.num_atoms)
-        if USE_CUDA:
-            self.support = self.support.cuda()
-        
-        super().__init__(*args, **kwargs)
-            
-    def init_network(self):
-        net = self.QnetworkHead(self.FeatureExtractorNet, self.noisy, self.env, self.num_atoms, self.support)
-        net.after_init()
-        return net
+        self.support = torch.linspace(self.Vmin, self.Vmax, self.num_atoms).to(device)
+        config["support"] = self.support      
+        super().__init__(config)
     
     def batch_target(self, reward_b, next_state_b, done_b):
         delta_z = float(self.Vmax - self.Vmin) / (self.num_atoms - 1)
@@ -59,14 +52,14 @@ def CategoricalQAgent(parclass):
         return proj_dist
 
     def get_loss(self, y, guess):
-        guess.data.clamp_(0.0001, 0.9999)   # TODO doesn't torch have cross entropy?
+        guess.data.clamp_(0.0001, 0.9999)   # TODO doesn't torch have cross entropy? Taken from source code.
         return -(y * guess.log()).sum(1).mean()
         
     def get_transition_importance(self, loss_b):
         return loss_b
         
     def show_record(self):
-        show_frames_and_distribution(self.frames, np.array(self.qualities_record)[:, 0], self.support.cpu().numpy())
+        show_frames_and_distribution(self.frames, np.array(self.record["qualities"])[:, 0], self.support.cpu().numpy())
         
   return CategoricalQAgent
         

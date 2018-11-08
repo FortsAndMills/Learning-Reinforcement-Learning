@@ -11,22 +11,22 @@ def NstepReplay(parclass):
     """
     __doc__ += parclass.__doc__
     
-    def __init__(self, replay_buffer_nsteps, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, config):
+        super().__init__(config)
         
-        self.replay_buffer_nsteps = replay_buffer_nsteps
+        self.replay_buffer_nsteps = config["replay_buffer_nsteps"]
         self.nstep_buffer = []
     
-    def memorize(self, state, action, reward, next_state, done, died):        
-        self.nstep_buffer.append((state, action, reward, next_state))
+    def memorize(self, state, action, reward, next_state, done):        
+        self.nstep_buffer.append((state, action, reward, next_state, np.ones(action.shape, dtype=bool)))
         
         if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
             nstep_reward = sum([self.nstep_buffer[i][2] * (self.gamma**i) for i in range(self.replay_buffer_nsteps)])
-            state, action, _, _ = self.nstep_buffer.pop(0)
-            super().memorize(state, action, nstep_reward, next_state, done, died)
+            state, action, _, _, actual = self.nstep_buffer.pop(0)
+            super().memorize(state[actual], action[actual], nstep_reward[actual], next_state[actual], done[actual])
             
-        if done or died:
-            self.nstep_buffer = []
+        for i in range(len(self.nstep_buffer)):
+            self.nstep_buffer[i][-1][done] = False
             
     def write_memory(self, mem_f):
         super().write_memory(mem_f)
@@ -50,19 +50,20 @@ def CollectiveNstepReplayBufferAgent(parclass):
     """
     __doc__ += NstepReplay(parclass).__doc__
         
-    def memorize(self, state, action, reward, next_state, done, died):
-        self.nstep_buffer.append((state, action, reward, next_state))
+    def memorize(self, state, action, reward, next_state, done):
+        self.nstep_buffer.append((state, action, reward, next_state, np.ones(action.shape, dtype=bool)))
         
-        R = 0
+        R = np.zeros((state.shape[0]))
         for i in range(len(self.nstep_buffer) - 1, -1, -1):
             R *= self.gamma
             R += self.nstep_buffer[i][2] * self.gamma
-            ReplayBufferAgent.memorize(self, self.nstep_buffer[i][0], self.nstep_buffer[i][1], R, next_state, done, died)           
+            actual = self.nstep_buffer[i][-1]
+            ReplayBufferAgent.memorize(self, self.nstep_buffer[i][0][actual], self.nstep_buffer[i][1][actual], R[actual], next_state[actual], done[actual])           
         
         if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
             self.nstep_buffer.pop(0)
             
-        if done or died:
-            self.nstep_buffer = []
+        for i in range(len(self.nstep_buffer)):
+            self.nstep_buffer[i][-1][done] = False
   return CollectiveNstepReplayBufferAgent
 
