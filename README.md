@@ -27,10 +27,10 @@ specially for my beloved scientific advisor:
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help!)
-* Acceleration of Rainbow still possible.
-* Multiprocessing environments support for value-based algorithms.
+* Acceleration of Rainbow still possible... Allegidly my version is somewhat slow :(
+* Multiprocessing environments support for value-based algorithms: first experiments failed :(
 * Check other environments.
-* Continue theory exploration (minimal program: R2D2, TRPO, PPO, Quantile Regression, DRQN, model-based stuff)
-* Continue implementing algorithms to the library (next: DDPG?)
-* Check code from other sources (Yandex Practical RL, OpenAI baselines)
+* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/)
+* Continue implementing algorithms to the library (next: DDPG?.. after all bugfixes, meh)
+* Check code from other sources (Yandex Practical RL, OpenAI baselines, ...).
 
