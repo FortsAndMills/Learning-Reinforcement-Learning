@@ -23,7 +23,7 @@ specially for my beloved scientific advisor:
 * **24/10/18** Finally achieved first results with multiprocessing policy gradient algorithm! First attempt to incorporate policy gradient interface into library + support for multiprocessing environments. A lot of work to do yet...
 * **02/11/18** Theory update: DDPG, GAE, HER, bugfixes
 * **08/11/18** Code bugfixes; interface polished, A2C and Rainbow both working.
-* **13/11/18** Rainbow turned out to be working very slow due to some poor coding. Fixed; multiprocessed DQN tested (without achieving performance improvement :( ). Also rainbow works 4x slower than vanilla DQN, that's not good, but corresponds with other sources.
+* **13/11/18** Rainbow turned out to be working very slow due to some poor coding. Fixed; multiprocessed DQN tested (without achieving performance improvement :( ). Also rainbow works 3x slower than vanilla DQN, that's not good, but corresponds with other sources.
 * **13/11/18** [Ptan accelerations](https://medium.com/mlreview/speeding-up-dqn-on-pytorch-solving-pong-in-30-minutes-81a1bd2dff55) (except #3) were tested. Acceleration #4 was "to use newest environment wrappers from deepmind", but turned out they were already used in my code.
 
 | | My current code| Launching PTAN's code | PTAN's promises |
