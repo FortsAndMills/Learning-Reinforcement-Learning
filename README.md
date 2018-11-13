@@ -23,12 +23,20 @@ specially for my beloved scientific advisor:
 * **24/10/18** Finally achieved first results with multiprocessing policy gradient algorithm! First attempt to incorporate policy gradient interface into library + support for multiprocessing environments. A lot of work to do yet...
 * **02/11/18** Theory update: DDPG, GAE, HER, bugfixes
 * **08/11/18** Code bugfixes; interface polished, A2C and Rainbow both working.
-* **11/11/18** or not...
+* **13/11/18** Rainbow turned out to be working very slow due to some poor coding. Fixed; multiprocessed DQN tested (without achieving performance improvement :( ). Also rainbow works 4x slower than vanilla DQN, that's not good, but corresponds with other sources.
+* **13/11/18** [Ptan accelerations](https://medium.com/mlreview/speeding-up-dqn-on-pytorch-solving-pong-in-30-minutes-81a1bd2dff55) (except #3) were tested. Acceleration #4 was "to use newest environment wrappers from deepmind", but turned out they were already used in my code.
+
+| | My current code| Launching PTAN's code | PTAN's promises |
+| ------------ | ------------ | ------------- | ------------- |
+| Initial implementation (classic DQN) | ? | ~54 FPS | ~154 FPS |
+| With "new wrappers" (improvement 4) | ~56 FPS | ? | ~182 FPS |
+| Improvement 4+1 (larger batch_size and steps) | ~120 FPS | ? | ~268 FPS |
+| Improvement 4+2 (async playing and optimizing) | ? | ? | ~316 FPS |
+| Improvement 4+3 (async cuda transfer) | ~60 FPS | ? | ~188 FPS |
+| All 4 improvements | ? | ? | ~484 FPS |
 
 ### PLANS:
-* Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help!)
-* Acceleration of Rainbow still possible... Allegidly my version is somewhat slow :(
-* Multiprocessing environments support for value-based algorithms: first experiments failed :(
+* Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
 * Check other environments.
 * Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/)
 * Continue implementing algorithms to the library (next: DDPG?.. after all bugfixes, meh)
