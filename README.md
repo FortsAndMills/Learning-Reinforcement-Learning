@@ -35,10 +35,14 @@ specially for my beloved scientific advisor:
 | Improvement 4+3 (async cuda transfer) | ~60 FPS | ? | ~188 FPS |
 | All 4 improvements | ? | ? | ~484 FPS |
 
+* **22/11/18** Found a simple way of slightly accelerating double DQN and A2C by simply reducing amount of forward passes through the network. Haven't seen this trick in other implementations, funny. Uploaded the optimized code.
+* **22/11/18** Experiment: backward experience replay. Works with Categorical DQN (which corresponds to theory), but doesn't provide any significant advancement to vanilla Categorical DQN. Added Backwards Replay to the library.
+* **22/11/18** Implemented: GAE.
+
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
 * Check other environments.
 * Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/)
-* Continue implementing algorithms to the library (next: DDPG?.. after all bugfixes, meh)
+* Continue implementing algorithms to the library (next: continuous control support + DDPG)
 * Check code from other sources (Yandex Practical RL, OpenAI baselines, ...).
 
