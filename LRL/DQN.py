@@ -12,11 +12,11 @@ def QAgent(parclass):
     Args:
         FeatureExtractorNet - class inherited from nn.Module
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
-        linear_layer - default linear layer, nn.Linear or NoisyLinear
+        magnitude_logging_fraction - number of frames between magnitude logging (it's expensive to do each iteration), int
         gamma - infinite horizon protection, float, from 0 to 1
         batch_size - size of batch for optimization on each frame, int
         replay_buffer_init - size of buffer launching q-network optimization
-        optimize_iterations - number of gradient descent steps after one transition, int
+        optimize_iterations - number of gradient descent steps after one transition, can be fractional, float
         optimizer - class inherited from torch.optimizer, Adam by default
         optimizer_args - arguments for optimizer, dictionary
         grad_norm_max - max norm of gradients for clipping, float
@@ -29,15 +29,20 @@ def QAgent(parclass):
         self.gamma = config.get("gamma", 0.99)
         self.batch_size = config.get("batch_size", 32)
         self.replay_buffer_init = config.get("replay_buffer_init", 1000)
+        self.optimize_iteration_charges = 0
         self.optimize_iterations = config.get("optimize_iterations", 1)
-        self.grad_norm_max = config.get("grad_norm_max", 1)
+        self.grad_norm_max = config.get("grad_norm_max", None)
+        self.magnitude_logging_fraction = config.get("magnitude_logging_fraction", 1000)
         
-        self.policy_net = self.init_network() 
-        self.optimizer = config.get("optimizer", optim.Adam)(self.policy_net.parameters(), **config.get("optimizer_args", {}))
+        #assert self.replay_buffer_init >= self.batch_size, "Batch size must be smaller than replay_buffer_init!"
+        assert self.gamma > 0 and self.gamma <= 1, "Gamma must lie in (0, 1]"
+        
+        self.q_net = self.init_network() 
+        self.optimizer = config.get("optimizer", optim.Adam)(self.q_net.parameters(), **config.get("optimizer_args", {}))
         
         self.logger_labels["loss"] = ("training iteration", "loss")
         if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
-            self.logger_labels["magnitude"] = ("training game step", "noise magnitude")
+            self.logger_labels["magnitude"] = ("training epoch", "noise magnitude")
 
     def init_network(self):
         '''create a new Q-network'''
@@ -46,23 +51,26 @@ def QAgent(parclass):
         return net
     
     def act(self, state):
-        if self.learn:
-            self.policy_net.train()
+        if self.is_learning:
+            self.q_net.train()
         else:
-            self.policy_net.eval()
+            self.q_net.eval()
         
         with torch.no_grad():
-            self.qualities = self.policy_net(Tensor(state))
-            return self.policy_net.greedy(self.qualities).cpu().numpy()
+            self.qualities = self.q_net(Tensor(state))
+            return self.q_net.greedy(self.qualities).cpu().numpy()
 
     def see(self, state, action, reward, next_state, done):
         super().see(state, action, reward, next_state, done)
         
-        for i in range(self.optimize_iterations):
+        self.optimize_iteration_charges += self.optimize_iterations * self.env.num_envs
+        while self.optimize_iteration_charges >= 1:
+            self.optimize_iteration_charges -= 1
             self.optimize_model()
         
-        if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
-            self.logger["magnitude"].append(self.policy_net.magnitude())
+        if (self.frames_done % self.magnitude_logging_fraction < self.env.num_envs and
+            self.config.get("linear_layer", nn.Linear) is NoisyLinear):         # TODO and if it is subclass?
+            self.logger["magnitude"].append(self.q_net.magnitude())
        
     def estimate_next_state(self, next_state_b):
         '''
@@ -70,7 +78,8 @@ def QAgent(parclass):
         input: next_state_batch - FloatTensor, batch_size x state_dim
         output: FloatTensor, batch_size
         '''
-        return self.policy_net.value(self.policy_net(next_state_b))
+        return self.q_net.value(self.next_state_q)
+        #return self.q_net.value(self.q_net(next_state_b))
     
     def batch_target(self, reward_b, next_state_b, done_b):
         '''
@@ -106,6 +115,7 @@ def QAgent(parclass):
             return
         
         state_b, action_b, reward_b, next_state_b, done_b, weights_b = self.sample(self.batch_size)
+        # TODO: weights logging?
 
         state_b      = Tensor(np.float32(state_b))
         next_state_b = Tensor(np.float32(next_state_b))
@@ -114,8 +124,13 @@ def QAgent(parclass):
         done_b       = Tensor(done_b)
         weights_b    = Tensor(weights_b)
         
-        self.policy_net.train()
-        q_values      = self.policy_net.gather(self.policy_net(state_b), action_b)
+        # optimizing forward pass through net!
+        values = self.q_net(torch.cat([state_b, next_state_b], dim=0))
+        self.state_q, self.next_state_q = torch.split(values, self.batch_size, dim=0)
+        
+        self.q_net.train()
+        q_values = self.q_net.gather(self.state_q, action_b)
+        #q_values = self.q_net.gather(self.q_net(state_b), action_b)
         with torch.no_grad():
             target_q_values = self.batch_target(reward_b, next_state_b, done_b)
 
@@ -127,7 +142,8 @@ def QAgent(parclass):
         
         self.optimizer.zero_grad()
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(self.policy_net.parameters(), self.grad_norm_max)
+        if self.grad_norm_max is not None:
+            torch.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.grad_norm_max)
         self.optimizer.step()
     
     def record_step(self):
@@ -139,9 +155,9 @@ def QAgent(parclass):
     
     def load(self, name, *args, **kwargs):
         super().load(name, *args, **kwargs)
-        self.policy_net.load_state_dict(torch.load(name + "-qnet"))
+        self.q_net.load_state_dict(torch.load(name + "-qnet"))
 
     def save(self, name, *args, **kwargs):
         super().save(name, *args, **kwargs)
-        torch.save(self.policy_net.state_dict(), name + "-qnet")
+        torch.save(self.q_net.state_dict(), name + "-qnet")
   return QAgent

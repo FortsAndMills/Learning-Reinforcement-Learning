@@ -20,13 +20,13 @@ def eGreedy(parclass):
         self.epsilon_by_frame = lambda frame_idx: config.get("epsilon_final", 0.01) + (config.get("epsilon_start", 1) - config.get("epsilon_final", 0.01)) * math.exp(-1. * frame_idx / config.get("epsilon_decay", 500))
 
     def act(self, state):
-        if self.learn:
+        if self.is_learning:
             explore = np.random.uniform(0, 1, size=state.shape[0]) <= self.epsilon_by_frame(self.frames_done)
             
-            actions = np.zeros((state.shape[0]))
+            actions = np.zeros((state.shape[0]), dtype=int)
             actions[explore] = [self.env.action_space.sample() for _ in range(explore.sum())]   # TODO vectorize?
             if (~explore).sum() > 0:
-                actions[~explore] = actions = super().act(state[~explore])
+                actions[~explore] = super().act(state[~explore])
             return actions
         else:
             return super().act(state)

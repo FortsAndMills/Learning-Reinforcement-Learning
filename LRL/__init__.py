@@ -8,8 +8,9 @@ from .network_heads import *
 
 from .agent import *
 from .replayBuffer import *
-from .nstepReplayBuffer import *
 from .prioritizedBufferAgent import *
+from .nstepReplayBuffer import *
+from .backwardBufferAgent import *
 
 from .DQN import *
 from .targetDQN import *
@@ -17,5 +18,6 @@ from .doubleDQN import *
 from .categoricalDQN import *
 
 from .A2C import *
+from .GAE import *
 
 from .eGreedy import *

@@ -9,6 +9,7 @@ import pickle
 from itertools import count
 import random, math
 import numpy as np
+import time
 
 import matplotlib.pyplot as plt
 from IPython.display import clear_output, display
@@ -20,8 +21,8 @@ import gym.spaces        # to avoid warnings
 gym.logger.set_level(40) # to avoid warnings
 
 USE_CUDA = torch.cuda.is_available()
-Tensor = lambda *args, **kwargs: torch.cuda.FloatTensor(*args, **kwargs) if USE_CUDA else torch.FloatTensor(*args, **kwargs)
-LongTensor = lambda *args, **kwargs: torch.cuda.LongTensor(*args, **kwargs) if USE_CUDA else torch.LongTensor(*args, **kwargs)
+Tensor = lambda *args, **kwargs: torch.FloatTensor(*args, **kwargs).cuda() if USE_CUDA else torch.FloatTensor(*args, **kwargs)
+LongTensor = lambda *args, **kwargs: torch.LongTensor(*args, **kwargs).cuda() if USE_CUDA else torch.LongTensor(*args, **kwargs)
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 def show_frames(frames):
@@ -82,6 +83,10 @@ def plot_durations(agent, means_window=100):
     for p in coords:
         if p not in plots:
             plots[p] = k; k += 1
+            
+    if len(plots) == 0:
+        print("No logs in logger yet...")
+        return
     
     plt.figure(2, figsize=(15, 3.5 * ((len(plots) + 1) // 2)))
     plt.title('Training...')
@@ -98,3 +103,6 @@ def plot_durations(agent, means_window=100):
         if key == "rewards":
             plt.plot(sliding_average(value, means_window))        
     plt.show()
+    
+    if "fps" in agent.logger:
+        print("Current FPS: ", agent.logger["fps"][-1])

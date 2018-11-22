@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from collections import OrderedDict
 import gym
 import gym.spaces
-from gym import spaces
+gym.logger.set_level(40) # to avoid warnings
 
 
 def copy_obs_dict(obs):
@@ -159,7 +159,8 @@ class VecEnv(ABC):
 
     def render(self, mode='human'):
         imgs = self.get_images()
-        bigimg = tile_images(imgs)
+        #bigimg = tile_images(imgs)
+        bigimg = imgs[0]
         if mode == 'human':
             self.get_viewer().imshow(bigimg)
             return self.get_viewer().isopen
@@ -375,7 +376,7 @@ class DummyVecEnv(VecEnv):
     def step_wait(self):
         for e in range(self.num_envs):
             action = self.actions[e]
-            if isinstance(self.envs[e].action_space, spaces.Discrete):
+            if isinstance(self.envs[e].action_space, gym.spaces.Discrete):
                 action = int(action)
 
             obs, self.buf_rews[e], self.buf_dones[e], self.buf_infos[e] = self.envs[e].step(action)

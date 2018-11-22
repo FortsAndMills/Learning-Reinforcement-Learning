@@ -1,6 +1,6 @@
 from .replayBuffer import *
 
-class PrioritizedBufferAgent(ReplayBufferAgent):
+class PrioritizedBufferAgent(ReplayBufferAgent):  # TODO check if sumtree works faster
     """
     Prioritized replay memory based on weighted importance sampling.
     Proxy of priority is considered to be loss on given transition. For DQN it is absolute of td loss.
@@ -24,7 +24,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):
         self.rp_beta_by_frame = lambda frame_idx: min(1.0, config.get("rp_beta_start", 0.4) + frame_idx * (1.0 - config.get("rp_beta_start", 0.4)) / config.get("rp_beta_frames", 100000))
 
     def memorize_transition(self, state, action, reward, next_state, done):
-        max_priority = max(self.priorities) if self.buffer else 1.0
+        max_priority = max(self.priorities) if self.buffer else 1.0                  # max?!?
         
         if len(self) < self.replay_buffer_capacity:
             self.priorities = np.append(self.priorities, max_priority)
@@ -37,7 +37,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):
         probs  = np.array(self.priorities) ** self.rp_alpha
         probs /= probs.sum()
         
-        self.batch_indices = np.random.choice(len(self), batch_size, p=probs)
+        self.batch_indices = np.random.choice(len(self), batch_size, p=probs, replace=True)   # ptan advice: replace = False makes O(n)
         samples = [self.buffer[idx] for idx in self.batch_indices]
                
         weights  = (probs[self.batch_indices]) ** (-self.rp_beta_by_frame(self.frames_done))

@@ -12,6 +12,7 @@ def DoubleQAgent(parclass):
     __doc__ += TargetQAgent(parclass).__doc__
                     
     def estimate_next_state(self, next_state_b):
-        chosen_actions = self.policy_net.greedy(self.policy_net(next_state_b))
+        chosen_actions = self.q_net.greedy(self.next_state_q)
+        #chosen_actions = self.q_net.greedy(self.q_net(next_state_b))
         return self.target_net.gather(self.target_net(next_state_b), chosen_actions)
   return DoubleQAgent

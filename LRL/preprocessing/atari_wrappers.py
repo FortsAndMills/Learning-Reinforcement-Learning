@@ -1,7 +1,9 @@
 import numpy as np
+import os
+os.environ.setdefault('PATH', '')
 from collections import deque
 import gym
-from gym import spaces
+import gym.spaces
 import cv2
 cv2.ocl.setUseOpenCL(False)
 
@@ -12,20 +14,27 @@ class NoopResetEnv(gym.Wrapper):
         """
         gym.Wrapper.__init__(self, env)
         self.noop_max = noop_max
+        self.override_num_noops = None
+        self.noop_action = 0
         assert env.unwrapped.get_action_meanings()[0] == 'NOOP'
 
     def reset(self, **kwargs):
         """ Do no-op action for a number of steps in [1, noop_max]."""
         self.env.reset(**kwargs)
-        noops = self.unwrapped.np_random.randint(1, self.noop_max + 1) #pylint: disable=E1101
+        if self.override_num_noops is not None:
+            noops = self.override_num_noops
+        else:
+            noops = self.unwrapped.np_random.randint(1, self.noop_max + 1) #pylint: disable=E1101
         assert noops > 0
-        
         obs = None
         for _ in range(noops):
-            obs, _, done, _ = self.env.step(0)
+            obs, _, done, _ = self.env.step(self.noop_action)
             if done:
                 obs = self.env.reset(**kwargs)
         return obs
+
+    def step(self, ac):
+        return self.env.step(ac)
 
 class FireResetEnv(gym.Wrapper):
     def __init__(self, env):
@@ -91,9 +100,6 @@ class MaxAndSkipEnv(gym.Wrapper):
         self._obs_buffer = np.zeros((2,)+env.observation_space.shape, dtype=np.uint8)
         self._skip       = skip
 
-    def reset(self):
-        return self.env.reset()
-
     def step(self, action):
         """Repeat action, sum reward, and max over last observations."""
         total_reward = 0.0
@@ -123,18 +129,26 @@ class ClipRewardEnv(gym.RewardWrapper):
         return np.sign(reward)
 
 class WarpFrame(gym.ObservationWrapper):
-    def __init__(self, env):
+    def __init__(self, env, width=84, height=84, grayscale=True):
         """Warp frames to 84x84 as done in the Nature paper and later work."""
         gym.ObservationWrapper.__init__(self, env)
-        self.width = 84
-        self.height = 84
-        self.observation_space = spaces.Box(low=0, high=255,
-            shape=(self.height, self.width, 1), dtype=np.uint8)
+        self.width = width
+        self.height = height
+        self.grayscale = grayscale
+        if self.grayscale:
+            self.observation_space = gym.spaces.Box(low=0, high=255,
+                shape=(self.height, self.width, 1), dtype=np.uint8)
+        else:
+            self.observation_space = gym.spaces.Box(low=0, high=255,
+                shape=(self.height, self.width, 3), dtype=np.uint8)
 
     def observation(self, frame):
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        if self.grayscale:
+            frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
         frame = cv2.resize(frame, (self.width, self.height), interpolation=cv2.INTER_AREA)
-        return frame[:, :, None]
+        if self.grayscale:
+            frame = np.expand_dims(frame, -1)
+        return frame
 
 class FrameStack(gym.Wrapper):
     def __init__(self, env, k):
@@ -148,7 +162,7 @@ class FrameStack(gym.Wrapper):
         self.k = k
         self.frames = deque([], maxlen=k)
         shp = env.observation_space.shape
-        self.observation_space = spaces.Box(low=0, high=255, shape=(shp[0], shp[1], shp[2] * k), dtype=np.uint8)
+        self.observation_space = gym.spaces.Box(low=0, high=255, shape=(shp[:-1] + (shp[-1] * k,)), dtype=env.observation_space.dtype)
 
     def reset(self):
         ob = self.env.reset()
@@ -168,6 +182,7 @@ class FrameStack(gym.Wrapper):
 class ScaledFloatFrame(gym.ObservationWrapper):
     def __init__(self, env):
         gym.ObservationWrapper.__init__(self, env)
+        self.observation_space = gym.spaces.Box(low=0, high=1, shape=env.observation_space.shape, dtype=np.float32)
 
     def observation(self, observation):
         # careful! This undoes the memory optimization, use
@@ -186,7 +201,7 @@ class LazyFrames(object):
 
     def _force(self):
         if self._out is None:
-            self._out = np.concatenate(self._frames, axis=2)
+            self._out = np.concatenate(self._frames, axis=-1)
             self._frames = None
         return self._out
 
@@ -214,33 +229,31 @@ class ImageToPyTorch(gym.ObservationWrapper):
     def observation(self, observation):
         return np.swapaxes(observation, 2, 0)
 
-# DEL: SOME FUNCTIONS, WHAT IS THIS?!?
-def make_atari(env_id):
-    raise Exception("DON'T USE THIS!")
-    
-    env = gym.make(env_id)
-    assert 'NoFrameskip' in env.spec.id
-    env = NoopResetEnv(env, noop_max=30)
-    env = MaxAndSkipEnv(env, skip=4)
-    return env
 
-def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
-    raise Exception("DON'T USE THIS!")
-    """Configure environment for DeepMind-style Atari.
-    """
-    if episode_life:
-        env = EpisodicLifeEnv(env)
-    if 'FIRE' in env.unwrapped.get_action_meanings():
-        env = FireResetEnv(env)
-    env = WarpFrame(env)
-    if scale:
-        env = ScaledFloatFrame(env)
-    if clip_rewards:
-        env = ClipRewardEnv(env)
-    if frame_stack:
-        env = FrameStack(env, 4)
-    return env    
+# DEL?
+#def make_atari(env_id, timelimit=True):
+#    # XXX(john): remove timelimit argument after gym is upgraded to allow double wrapping
+#    env = gym.make(env_id)
+#    if not timelimit:
+#        env = env.env
+#    assert 'NoFrameskip' in env.spec.id
+#    env = NoopResetEnv(env, noop_max=30)
+#    env = MaxAndSkipEnv(env, skip=4)
+#    return env
+#
+#def wrap_deepmind(env, episode_life=True, clip_rewards=True, frame_stack=False, scale=False):
+#    """Configure environment for DeepMind-style Atari.
+#    """
+#    if episode_life:
+#        env = EpisodicLifeEnv(env)
+#    if 'FIRE' in env.unwrapped.get_action_meanings():
+#        env = FireResetEnv(env)
+#    env = WarpFrame(env)
+#    if scale:
+#        env = ScaledFloatFrame(env)
+#    if clip_rewards:
+#        env = ClipRewardEnv(env)
+#    if frame_stack:
+#        env = FrameStack(env, 4)
+#    return env
 
-def wrap_pytorch(env):
-    raise Exception("DON'T USE THIS!")
-    return ImageToPyTorch(env)

@@ -33,7 +33,7 @@ class ReplayBufferAgent(Agent):
     
     def memorize(self, state, action, reward, next_state, done):
         """Remember batch of transitions"""
-        for s, a, r, ns, d in zip(state, action, reward, next_state, done):
+        for s, a, r, ns, d in zip(state, action, reward, next_state, done):  # TODO check if indexation is faster
             self.memorize_transition(s, a, r, ns, d)
     
     def see(self, state, action, reward, next_state, done):

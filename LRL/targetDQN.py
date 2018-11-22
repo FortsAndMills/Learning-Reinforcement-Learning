@@ -22,12 +22,12 @@ def TargetQAgent(parclass):
 
     def unfreeze(self):
         '''copy policy net weights to target net'''
-        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.target_net.load_state_dict(self.q_net.state_dict())
 
     def see(self, state, action, reward, next_state, done):
         super().see(state, action, reward, next_state, done)
 
-        if self.frames_done % self.target_update == 0:
+        if self.frames_done % self.target_update < self.env.num_envs:
             self.unfreeze()
     
     def estimate_next_state(self, next_state_b):

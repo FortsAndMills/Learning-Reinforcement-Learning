@@ -54,7 +54,7 @@ def CollectiveNstepReplayBufferAgent(parclass):
         self.nstep_buffer.append((state, action, reward, next_state, np.ones(action.shape, dtype=bool)))
         
         R = np.zeros((state.shape[0]))
-        for i in range(len(self.nstep_buffer) - 1, -1, -1):
+        for i in reversed(range(len(self.nstep_buffer))):
             R *= self.gamma
             R += self.nstep_buffer[i][2] * self.gamma
             actual = self.nstep_buffer[i][-1]

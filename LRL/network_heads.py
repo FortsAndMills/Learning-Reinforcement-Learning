@@ -108,8 +108,8 @@ class DuelingQnetwork(QnetworkHead):
     '''Dueling version of Q-network head'''
     def __init__(self, config): 
         super().__init__(config)       
-        self.v_head = nn.Linear(self.feature_size, 1)
-        self.a_head = nn.Linear(self.feature_size, self.num_actions)
+        self.v_head = self.linear(self.feature_size, 1)
+        self.a_head = self.linear(self.feature_size, self.num_actions)
         
     def forward(self, state):
         state = self.feature_extractor_net(state)
@@ -137,7 +137,7 @@ class CategoricalQnetwork(CategoricalQnetworkHead):
     '''Simple categorical DQN head'''
     def __init__(self, config):
         super().__init__(config)       
-        self.head = nn.Linear(self.feature_size, self.num_actions * self.num_atoms) 
+        self.head = self.linear(self.feature_size, self.num_actions * self.num_atoms) 
         
     def forward(self, state):
         state = self.feature_extractor_net(state)
@@ -147,8 +147,8 @@ class DuelingCategoricalQnetwork(CategoricalQnetworkHead):
     '''Dueling version of categorical DQN head'''
     def __init__(self, config):
         super().__init__(config)    
-        self.v_head = nn.Linear(self.feature_size, self.num_atoms)
-        self.a_head = nn.Linear(self.feature_size, self.num_actions * self.num_atoms)    
+        self.v_head = self.linear(self.feature_size, self.num_atoms)
+        self.a_head = self.linear(self.feature_size, self.num_actions * self.num_atoms)    
         
     def forward(self, state):
         state = self.feature_extractor_net(state)

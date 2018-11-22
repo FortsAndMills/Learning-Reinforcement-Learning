@@ -1,5 +1,42 @@
 from .utils import *
 
+class NoisyLinearWTF(nn.Linear):
+    """
+    NoisyNet layer with factorized gaussian noise
+    """
+    def __init__(self, in_features, out_features, std_init=0.4):
+        super(NoisyLinear, self).__init__(in_features, out_features)
+        
+        sigma_init = std_init / math.sqrt(in_features)
+        self.n_params = in_features*out_features + out_features
+        
+        self.sigma_weight = nn.Parameter(Tensor(out_features, in_features).fill_(std_init))
+        self.register_buffer("epsilon_input", torch.zeros(1, in_features).to(device))
+        self.register_buffer("epsilon_output", torch.zeros(out_features, 1).to(device))
+        
+        self.sigma_bias = nn.Parameter(Tensor(out_features).fill_(std_init))
+
+    def forward(self, x):
+        torch.randn(self.epsilon_input.size(), out=self.epsilon_input)
+        torch.randn(self.epsilon_output.size(), out=self.epsilon_output)
+
+        scale = lambda x: torch.sign(x) * torch.sqrt(torch.abs(x))
+        eps_in = scale(self.epsilon_input)
+        eps_out = scale(self.epsilon_output)
+        
+        return F.linear(x, self.weight + self.sigma_weight * torch.mul(eps_in, eps_out), self.bias + self.sigma_bias * eps_out.t())
+        
+    def magnitude(self):
+        # returns summed magnitudes of noise and number of noisy parameters
+        return (self.sigma_weight.abs().sum() + self.sigma_bias.abs().sum()).detach().cpu().numpy(), self.n_params
+
+def orthogonal_with_zero_bias_init(module, gain=1):
+    """Initialization seems accelerating A2C"""
+    nn.init.orthogonal_(module.weight.data, gain=gain)
+    nn.init.constant_(module.bias.data, 0)
+    return module
+
+# TO_DEL OR NOT?
 class NoisyLinear(nn.Module):
     """NoisyLinear module for Noisy Net exploration technique"""
     
@@ -52,9 +89,3 @@ class NoisyLinear(nn.Module):
     def magnitude(self):
         # returns summed magnitudes of noise and number of noisy parameters
         return (self.weight_sigma.abs().sum() + self.bias_sigma.abs().sum()).detach().cpu().numpy(), self.in_features*self.out_features + self.out_features
-
-def orthogonal_with_zero_bias_init(module, gain=1):
-    """Initialization seems accelerating A2C"""
-    nn.init.orthogonal_(module.weight.data, gain=gain)
-    nn.init.constant_(module.bias.data, 0)
-    return module

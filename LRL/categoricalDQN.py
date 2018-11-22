@@ -19,12 +19,16 @@ def CategoricalQAgent(parclass):
     def __init__(self, config):
         self.Vmin = config.get("Vmin", -10)
         self.Vmax = config.get("Vmax", 10)
-        self.num_atoms = config.get("num_atoms", 51)
-        
+        self.num_atoms = config.get("num_atoms", 51)        
         self.support = torch.linspace(self.Vmin, self.Vmax, self.num_atoms).to(device)
-        config["support"] = self.support      
-        super().__init__(config)
-    
+        assert self.Vmin < self.Vmax, "Vmin must be less than Vmax!"
+        
+        config["support"] = self.support
+        config["num_atoms"] = self.num_atoms
+        
+        super().__init__(config)        
+        self.offset = torch.linspace(0, (self.batch_size - 1) * self.num_atoms, self.batch_size).long().unsqueeze(1).expand(self.batch_size, self.num_atoms).to(device)
+            
     def batch_target(self, reward_b, next_state_b, done_b):
         delta_z = float(self.Vmax - self.Vmin) / (self.num_atoms - 1)
         
@@ -38,16 +42,11 @@ def CategoricalQAgent(parclass):
         Tz = Tz.clamp(min=self.Vmin, max=self.Vmax)
         b  = (Tz - self.Vmin) / delta_z
         l  = b.floor().long()
-        u  = b.ceil().long()
+        u  = b.ceil().long()        
         
-        offset = torch.linspace(0, (self.batch_size - 1) * self.num_atoms, self.batch_size).long().unsqueeze(1).expand(self.batch_size, self.num_atoms)
-        proj_dist = torch.zeros(next_dist.size())
-        if USE_CUDA:
-            offset = offset.cuda()
-            proj_dist = proj_dist.cuda()     
-              
-        proj_dist.view(-1).index_add_(0, (l + offset).view(-1), (next_dist * (u.float()+ (b.ceil() == b).float() - b)).view(-1))
-        proj_dist.view(-1).index_add_(0, (u + offset).view(-1), (next_dist * (b - l.float())).view(-1))
+        proj_dist = Tensor(next_dist.size()).zero_()              
+        proj_dist.view(-1).index_add_(0, (l + self.offset).view(-1), (next_dist * (u.float()+ (b.ceil() == b).float() - b)).view(-1))
+        proj_dist.view(-1).index_add_(0, (u + self.offset).view(-1), (next_dist * (b - l.float())).view(-1))
         proj_dist /= proj_dist.sum(1).unsqueeze(1)
         return proj_dist
 
@@ -59,7 +58,7 @@ def CategoricalQAgent(parclass):
         return loss_b
         
     def show_record(self):
-        show_frames_and_distribution(self.frames, np.array(self.record["qualities"])[:, 0], self.support.cpu().numpy())
+        show_frames_and_distribution(self.record["frames"], np.array(self.record["qualities"])[:, 0], self.support.cpu().numpy())
         
   return CategoricalQAgent
         
