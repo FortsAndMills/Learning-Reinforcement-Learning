@@ -15,22 +15,27 @@ def CategoricalQAgent(parclass):
         num_atoms - number of atoms in approximation distribution, int
     """
     __doc__ += QAgent(parclass).__doc__
+    PARAMS = QAgent(parclass).PARAMS | {"Vmin", "Vmax", "num_atoms"} 
     
     def __init__(self, config):
-        self.Vmin = config.get("Vmin", -10)
-        self.Vmax = config.get("Vmax", 10)
-        self.num_atoms = config.get("num_atoms", 51)        
-        self.support = torch.linspace(self.Vmin, self.Vmax, self.num_atoms).to(device)
-        assert self.Vmin < self.Vmax, "Vmin must be less than Vmax!"
+        config.setdefault("Vmin", -10)
+        config.setdefault("Vmax", 10)
+        config.setdefault("num_atoms", 51)        
         
-        config["support"] = self.support
-        config["num_atoms"] = self.num_atoms
+        config.setdefault("QnetworkHead", CategoricalQnetwork)
         
-        super().__init__(config)        
-        self.offset = torch.linspace(0, (self.batch_size - 1) * self.num_atoms, self.batch_size).long().unsqueeze(1).expand(self.batch_size, self.num_atoms).to(device)
+        assert config["Vmin"] < config["Vmax"], "Vmin must be less than Vmax!"
+        assert issubclass(config["QnetworkHead"], CategoricalQnetworkHead)
+         
+        super().__init__(config)
+        
+        self.support = torch.linspace(self.config.Vmin, self.config.Vmax, self.config.num_atoms).to(device)
+        self.config["support"] = self.support
+        
+        self.offset = torch.linspace(0, (self.config.batch_size - 1) * self.config.num_atoms, self.config.batch_size).long().unsqueeze(1).expand(self.config.batch_size, self.config.num_atoms).to(device)
             
     def batch_target(self, reward_b, next_state_b, done_b):
-        delta_z = float(self.Vmax - self.Vmin) / (self.num_atoms - 1)
+        delta_z = float(self.config.Vmax - self.config.Vmin) / (self.config.num_atoms - 1)
         
         next_dist = self.estimate_next_state(next_state_b)
 
@@ -38,9 +43,9 @@ def CategoricalQAgent(parclass):
         done_b   = done_b.unsqueeze(1).expand_as(next_dist)
         support = self.support.unsqueeze(0).expand_as(next_dist)
 
-        Tz = reward_b + (1 - done_b) * (self.gamma**self.replay_buffer_nsteps) * support
-        Tz = Tz.clamp(min=self.Vmin, max=self.Vmax)
-        b  = (Tz - self.Vmin) / delta_z
+        Tz = reward_b + (1 - done_b) * (self.config.gamma**self.config.replay_buffer_nsteps) * support
+        Tz = Tz.clamp(min=self.config.Vmin, max=self.config.Vmax)
+        b  = (Tz - self.config.Vmin) / delta_z
         l  = b.floor().long()
         u  = b.ceil().long()        
         
@@ -52,13 +57,13 @@ def CategoricalQAgent(parclass):
 
     def get_loss(self, y, guess):
         guess.data.clamp_(0.0001, 0.9999)   # TODO doesn't torch have cross entropy? Taken from source code.
-        return -(y * guess.log()).sum(1).mean()
+        return -(y * guess.log()).sum(1)
         
     def get_transition_importance(self, loss_b):
         return loss_b
         
     def show_record(self):
-        show_frames_and_distribution(self.record["frames"], np.array(self.record["qualities"])[:, 0], self.support.cpu().numpy())
+        show_frames_and_distribution(self.record["frames"], np.array(self.record["qualities"])[:, 0], "Future reward distribution", self.support.cpu().numpy())
         
   return CategoricalQAgent
         

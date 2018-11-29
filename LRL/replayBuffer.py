@@ -9,31 +9,50 @@ class ReplayBufferAgent(Agent):
         replay_buffer_capacity - size of buffer, int
     """
     __doc__ += Agent.__doc__
+    PARAMS = Agent.PARAMS | {"replay_buffer_capacity"}
     
     def __init__(self, config):
         super().__init__(config)
         
-        self.replay_buffer_capacity = config.get("replay_buffer_capacity", 100000)
+        self.config.setdefault("replay_buffer_capacity", 100000)
         
-        self.replay_buffer_nsteps = 1
+        self.config.replay_buffer_nsteps = 1
         self.buffer = []
         self.pos = 0
     
     def memorize_transition(self, state, action, reward, next_state, done):
-        """Remember transition"""
+        """
+        Remember given transition:
+        input: state - numpy array, (observation_shape)
+        input: action - float or int
+        input: reward - float
+        input: next_state - numpy array, (observation_shape)
+        input: done - 0 or 1
+        """
+        
+        # preparing for concatenation into batch in future
         state      = np.expand_dims(state, 0)
         next_state = np.expand_dims(next_state, 0)
         
-        if len(self) < self.replay_buffer_capacity:
+        # this turned out to be the quickest way of working with experience memory
+        if len(self) < self.config.replay_buffer_capacity:
             self.buffer.append((state, action, reward, next_state, done))
         else:
             self.buffer[self.pos] = (state, action, reward, next_state, done)
         
-        self.pos = (self.pos + 1) % self.replay_buffer_capacity
+        self.pos = (self.pos + 1) % self.config.replay_buffer_capacity
     
     def memorize(self, state, action, reward, next_state, done):
-        """Remember batch of transitions"""
-        for s, a, r, ns, d in zip(state, action, reward, next_state, done):  # TODO check if indexation is faster
+        """
+        Remember batch of transitions:
+        input: state - numpy array, (num_envs x observation_shape)
+        input: action - numpy array of ints or floats, (num_envs)
+        input: reward - numpy array, (num_envs)
+        input: next_state - numpy array, (num_envs x observation_shape)
+        input: done - numpy array, 0 and 1, (num_envs)
+        """
+        
+        for s, a, r, ns, d in zip(state, action, reward, next_state, done):
             self.memorize_transition(s, a, r, ns, d)
     
     def see(self, state, action, reward, next_state, done):
@@ -43,12 +62,13 @@ class ReplayBufferAgent(Agent):
     def sample(self, batch_size):
         """
         Generate batch of given size.
-        Output: state_batch - batch_size x state_dim 
-        Output: action_batch - batch_size
-        Output: reward_batch - batch_size
-        Output: next_state_batch - batch_size x state_dim 
-        Output: done_batch - batch_size
-        Output: weights_batch - batch_size
+        input: batch_size - int
+        output: state_batch - numpy array, (batch_size x state_dim)
+        output: action_batch - numpy array, (batch_size)
+        output: reward_batch - numpy array, (batch_size)
+        output: next_state_batch - numpy array, (batch_size x state_dim)
+        output: done_batch - numpy array, (batch_size)
+        output: weights_batch - numpy array, (batch_size)
         """
         state, action, reward, next_state, done = zip(*random.sample(self.buffer, batch_size))
         return np.concatenate(state), action, reward, np.concatenate(next_state), done, np.ones((batch_size))

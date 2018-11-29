@@ -11,14 +11,15 @@ def TargetQAgent(parclass):
         target_update - frequency in frames of updating target network
     '''
     __doc__ += parclass.__doc__
+    PARAMS = parclass.PARAMS | {"target_update"}
     
     def __init__(self, config):
         super().__init__(config)
 
-        self.target_net = self.init_network() 
+        self.target_net = self.config.QnetworkHead(self.config, "Qnetwork").to(device)
         self.unfreeze()
 
-        self.target_update = config.get("target_update", 100)
+        config.setdefault("target_update", 100)
 
     def unfreeze(self):
         '''copy policy net weights to target net'''
@@ -27,7 +28,7 @@ def TargetQAgent(parclass):
     def see(self, state, action, reward, next_state, done):
         super().see(state, action, reward, next_state, done)
 
-        if self.frames_done % self.target_update < self.env.num_envs:
+        if self.frames_done % self.config.target_update < self.env.num_envs:
             self.unfreeze()
     
     def estimate_next_state(self, next_state_b):

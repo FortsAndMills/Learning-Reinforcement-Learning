@@ -7,15 +7,18 @@ from .network_modules import *
 from .network_heads import *
 
 from .agent import *
+
+
 from .replayBuffer import *
 from .prioritizedBufferAgent import *
 from .nstepReplayBuffer import *
 from .backwardBufferAgent import *
 
 from .DQN import *
+from .categoricalDQN import *
+from .DDPG import *
 from .targetDQN import *
 from .doubleDQN import *
-from .categoricalDQN import *
 
 from .A2C import *
 from .GAE import *

@@ -10,9 +10,7 @@ def QAgent(parclass):
     Based on: https://arxiv.org/abs/1312.5602
     
     Args:
-        FeatureExtractorNet - class inherited from nn.Module
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
-        magnitude_logging_fraction - number of frames between magnitude logging (it's expensive to do each iteration), int
         gamma - infinite horizon protection, float, from 0 to 1
         batch_size - size of batch for optimization on each frame, int
         replay_buffer_init - size of buffer launching q-network optimization
@@ -22,136 +20,123 @@ def QAgent(parclass):
         grad_norm_max - max norm of gradients for clipping, float
     """
     __doc__ += parclass.__doc__
+    PARAMS = parclass.PARAMS | Head.PARAMS("Qnetwork") | {"QnetworkHead", "gamma", "batch_size", 
+                                                          "replay_buffer_init", "optimize_iterations"} 
     
     def __init__(self, config):
         super().__init__(config)
         
-        self.gamma = config.get("gamma", 0.99)
-        self.batch_size = config.get("batch_size", 32)
-        self.replay_buffer_init = config.get("replay_buffer_init", 1000)
+        self.config.setdefault("QnetworkHead", Qnetwork)
+        self.config.setdefault("gamma", 0.99)
+        self.config.setdefault("batch_size", 32)
+        self.config.setdefault("replay_buffer_init", 1000)
+        self.config.setdefault("optimize_iterations", 1)
+        
+        assert self.config.replay_buffer_init >= self.config.batch_size, "Batch size must be smaller than replay_buffer_init!"
+        assert self.config.gamma > 0 and self.config.gamma <= 1, "Gamma must lie in (0, 1]"
+        
+        self.q_net = self.config.QnetworkHead(self.config, "Qnetwork").to(device)
+        self.q_net.init_optimizer()
         self.optimize_iteration_charges = 0
-        self.optimize_iterations = config.get("optimize_iterations", 1)
-        self.grad_norm_max = config.get("grad_norm_max", None)
-        self.magnitude_logging_fraction = config.get("magnitude_logging_fraction", 1000)
-        
-        #assert self.replay_buffer_init >= self.batch_size, "Batch size must be smaller than replay_buffer_init!"
-        assert self.gamma > 0 and self.gamma <= 1, "Gamma must lie in (0, 1]"
-        
-        self.q_net = self.init_network() 
-        self.optimizer = config.get("optimizer", optim.Adam)(self.q_net.parameters(), **config.get("optimizer_args", {}))
         
         self.logger_labels["loss"] = ("training iteration", "loss")
-        if self.config.get("linear_layer", nn.Linear) is NoisyLinear:
-            self.logger_labels["magnitude"] = ("training epoch", "noise magnitude")
-
-    def init_network(self):
-        '''create a new Q-network'''
-        net = self.config.get("QnetworkHead", Qnetwork)(self.config)        
-        net.after_init()
-        return net
+        self.log_net(self.q_net, "Qnetwork")
     
-    def act(self, state):
-        if self.is_learning:
-            self.q_net.train()
-        else:
-            self.q_net.eval()
+    def act(self, state, record=False):
+        self.q_net.eval()
         
         with torch.no_grad():
-            self.qualities = self.q_net(Tensor(state))
-            return self.q_net.greedy(self.qualities).cpu().numpy()
+            qualities = self.q_net(Tensor(state))
+            
+            if record:
+                self.record["qualities"].append(qualities[0:1].cpu().numpy())
+            
+            return self.q_net.greedy(qualities).cpu().numpy()
 
     def see(self, state, action, reward, next_state, done):
         super().see(state, action, reward, next_state, done)
         
-        self.optimize_iteration_charges += self.optimize_iterations * self.env.num_envs
+        self.optimize_iteration_charges += self.config.optimize_iterations * self.env.num_envs
         while self.optimize_iteration_charges >= 1:
             self.optimize_iteration_charges -= 1
-            self.optimize_model()
-        
-        if (self.frames_done % self.magnitude_logging_fraction < self.env.num_envs and
-            self.config.get("linear_layer", nn.Linear) is NoisyLinear):         # TODO and if it is subclass?
-            self.logger["magnitude"].append(self.q_net.magnitude())
+            
+            if len(self) >= self.config.replay_buffer_init:
+                self.optimize_model()
        
     def estimate_next_state(self, next_state_b):
         '''
-        Calculates estimation of next state
-        input: next_state_batch - FloatTensor, batch_size x state_dim
+        Calculates estimation of next state.
+        May use self.next_state_q, which is an output of self.q_net on next_state_b
+        input: next_state_batch - FloatTensor, (batch_size x state_dim)
         output: FloatTensor, batch_size
         '''
         return self.q_net.value(self.next_state_q)
-        #return self.q_net.value(self.q_net(next_state_b))
     
     def batch_target(self, reward_b, next_state_b, done_b):
         '''
         Calculates target for batch to learn
-        input: reward_batch - FloatTensor, batch_size
-        input: next_state_batch - FloatTensor, batch_size x state_dim
-        input: done_batch - FloatTensor, batch_size
-        output: FloatTensor, batch_size
+        input: reward_batch - FloatTensor, (batch_size)
+        input: next_state_batch - FloatTensor, (batch_size x state_dim)
+        input: done_batch - FloatTensor, (batch_size)
+        output: FloatTensor, (batch_size)
         '''
         next_q_values = self.estimate_next_state(next_state_b)
-        return reward_b + (self.gamma**self.replay_buffer_nsteps) * next_q_values * (1 - done_b)
+        return reward_b + (self.config.gamma**self.config.replay_buffer_nsteps) * next_q_values * (1 - done_b)
 
     def get_loss(self, y, guess):
         '''
         Calculates batch loss
-        input: y - target, FloatTensor, batch_size
-        input: guess - current model output, FloatTensor, batch_size
-        output: FloatTensor, batch_size
+        input: y - target, FloatTensor, (batch_size)
+        input: guess - current model output, FloatTensor, (batch_size)
+        output: FloatTensor, (batch_size)
         '''
         return (guess - y).pow(2)
         
     def get_transition_importance(self, loss_b):
         '''
         Calculates importance of transitions in batch by loss
-        input: loss_b - FloatTensor, batch_size
-        output: FloatTensor, batch_size
+        input: loss_b - FloatTensor, (batch_size)
+        output: FloatTensor, (batch_size)
         '''
         return loss_b**0.5
 
     def optimize_model(self):
-        '''One step of Q-network optimization'''
-        if len(self) < self.replay_buffer_init:
-            return
-        
-        state_b, action_b, reward_b, next_state_b, done_b, weights_b = self.sample(self.batch_size)
+        '''One step of Q-network optimization'''        
+        self.batch = self.sample(self.config.batch_size)
+        state_b, action_b, reward_b, next_state_b, done_b, weights_b = self.batch
         # TODO: weights logging?
 
         state_b      = Tensor(np.float32(state_b))
         next_state_b = Tensor(np.float32(next_state_b))
-        action_b     = LongTensor(action_b)
-        reward_b     = Tensor(reward_b)
-        done_b       = Tensor(done_b)
+        action_b     = self.ActionTensor(action_b)
+        reward_b     = Tensor(np.float32(reward_b))
+        done_b       = Tensor(np.float32(done_b))
         weights_b    = Tensor(weights_b)
         
         # optimizing forward pass through net!
-        values = self.q_net(torch.cat([state_b, next_state_b], dim=0))
-        self.state_q, self.next_state_q = torch.split(values, self.batch_size, dim=0)
-        
         self.q_net.train()
+        output = self.q_net(torch.cat([state_b, next_state_b], dim=0))
+        self.state_q, self.next_state_q = torch.split(output, self.config.batch_size, dim=0)
+        
+        # getting q values for state and next state
         q_values = self.q_net.gather(self.state_q, action_b)
-        #q_values = self.q_net.gather(self.q_net(state_b), action_b)
         with torch.no_grad():
             target_q_values = self.batch_target(reward_b, next_state_b, done_b)
-
+            
+        # getting loss and updating transition importances
         loss_b = self.get_loss(target_q_values, q_values)
         self.update_priorities(self.get_transition_importance(loss_b).detach().cpu().numpy())
         
+        assert len(loss_b.shape) == 1, loss_b
+        
+        # making optimization step
         loss = (loss_b * weights_b).mean()
         self.logger["loss"].append(loss.detach().cpu().numpy())
         
-        self.optimizer.zero_grad()
-        loss.backward()
-        if self.grad_norm_max is not None:
-            torch.nn.utils.clip_grad_norm_(self.q_net.parameters(), self.grad_norm_max)
-        self.optimizer.step()
-    
-    def record_step(self):
-        super().record_step()
-        self.record["qualities"].append(self.qualities.cpu().numpy())
+        self.q_net.optimize(loss)
         
     def show_record(self):
-        super().show_record()  #TODO: show near the game plot of action qualities
+        show_frames_and_distribution(self.record["frames"], np.array(self.record["qualities"]), "Qualities", np.arange(self.config["num_actions"]))
     
     def load(self, name, *args, **kwargs):
         super().load(name, *args, **kwargs)

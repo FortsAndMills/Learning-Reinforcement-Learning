@@ -2,39 +2,58 @@ from .agent import *
 
 class BackwardBufferAgent(Agent):
     """
-    Experimental!
+    Experimental! Stores transitions from different games, than samples
+    game transitions in reverse order.
     
     Args:
         replay_buffer_games_capacity - size of buffer in games, int
         batch_size - size of batch on each step, int
     """
     __doc__ += Agent.__doc__
+    PARAMS = Agent.PARAMS | {"replay_buffer_games_capacity", "batch_size"}    
     
     def __init__(self, config):
         super().__init__(config)
         
-        self.batch_size = config.get("batch_size", 32)
-        self.replay_buffer_games_capacity = config.get("replay_buffer_games_capacity", 50)
+        self.config.setdefault("batch_size", 32)
+        self.config.setdefault("replay_buffer_games_capacity", 50)        
+        self.config.replay_buffer_nsteps = 1
         
-        self.replay_buffer_nsteps = 1
         self.buffer = []
         self.pos = 0
-        self.game_playing_ids = [None for i in range(self.batch_size)]
-        self.sampling_index = [(0, 0) for i in range(self.batch_size)]
+        self.game_playing_ids = [None for i in range(self.config.batch_size)]
+        self.sampling_index = [(0, 0) for i in range(self.config.batch_size)]
     
     def memorize_transition(self, state, action, reward, next_state, done, game_id):
-        """Remember transition"""
+        """
+        Remember given transition:
+        input: state - numpy array, (observation_shape)
+        input: action - float or int
+        input: reward - float
+        input: next_state - numpy array, (observation_shape)
+        input: done - 0 or 1
+        input: game_id - int, id of game, from which this transition was sampled
+        """
+        
         state      = np.expand_dims(state, 0)
         next_state = np.expand_dims(next_state, 0)        
         self.buffer[game_id].append((state, action, reward, next_state, done))
     
     def memorize(self, state, action, reward, next_state, done):
-        """Remember batch of transitions"""
+        """
+        Remember batch of transitions:
+        input: state - numpy array, (num_envs x observation_shape)
+        input: action - numpy array of ints or floats, (num_envs)
+        input: reward - numpy array, (num_envs)
+        input: next_state - numpy array, (num_envs x observation_shape)
+        input: done - numpy array, 0 and 1, (num_envs)
+        """
+        
         for i, s, a, r, ns, d in zip(range(state.shape[0]), state, action, reward, next_state, done):
             game_id = self.game_playing_ids[i]
             
             if game_id is None:
-                if len(self.buffer) < self.replay_buffer_games_capacity:
+                if len(self.buffer) < self.config.replay_buffer_games_capacity:
                     self.buffer.append([])
                 else:
                     self.buffer[self.pos] = []
@@ -42,7 +61,7 @@ class BackwardBufferAgent(Agent):
             
                 self.game_playing_ids[i] = self.pos
                 game_id = self.pos
-                self.pos = (self.pos + 1) % self.replay_buffer_games_capacity
+                self.pos = (self.pos + 1) % self.config.replay_buffer_games_capacity
                 
             self.memorize_transition(s, a, r, ns, d, game_id)
             
@@ -56,14 +75,15 @@ class BackwardBufferAgent(Agent):
     def sample(self, batch_size):
         """
         Generate batch of given size.
-        Output: state_batch - batch_size x state_dim 
-        Output: action_batch - batch_size
-        Output: reward_batch - batch_size
-        Output: next_state_batch - batch_size x state_dim 
-        Output: done_batch - batch_size
-        Output: weights_batch - batch_size
+        input: batch_size - int
+        output: state_batch - numpy array, (batch_size x state_dim)
+        output: action_batch - numpy array, (batch_size)
+        output: reward_batch - numpy array, (batch_size)
+        output: next_state_batch - numpy array, (batch_size x state_dim)
+        output: done_batch - numpy array, (batch_size)
+        output: weights_batch - numpy array, (batch_size)
         """
-        assert batch_size == self.batch_size, "Backward Buffer Agent batch size must be always fixed the same"
+        assert batch_size == self.config.batch_size, "Backward Buffer Agent batch size must be always fixed the same"
         
         def sample_game():
             game_id = random.randint(0, len(self.buffer) - 1)
@@ -77,7 +97,7 @@ class BackwardBufferAgent(Agent):
         pass
         
     def __len__(self):
-        return len(self.buffer)
+        return sum([len(game_buffer) for game_buffer in self.buffer])
     
     def read_memory(self, mem_f):
         self.buffer = pickle.load(mem_f)

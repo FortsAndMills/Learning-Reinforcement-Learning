@@ -13,15 +13,18 @@ def GAE(parclass):
         gae_tau - float, from 0 to 1
     """
     __doc__ += A2C(parclass).__doc__
+    PARAMS = A2C(parclass).PARAMS | {"gae_tau"} 
     
     def __init__(self, config):
         super().__init__(config)
-        self.gae_tau = config.get("gae_tau", 0.95)
+        
+        self.config.setdefault("gae_tau", 0.95)
+        assert self.config.gae_tau > 0 and self.config.gae_tau <= 1, "Gae Tau must lie in (0, 1]"
     
     def compute_returns(self, values):
         gae = 0
         for step in reversed(range(self.rewards.size(0))): # just some arithmetics ;)
-            delta = self.rewards[step] + self.gamma * values[step + 1] * (1 - self.dones[step + 1]) - values[step]
-            gae = delta + self.gamma * self.gae_tau * (1 - self.dones[step + 1]) * gae
+            delta = self.rewards[step] + self.config.gamma * values[step + 1] * (1 - self.dones[step + 1]) - values[step]
+            gae = delta + self.config.gamma * self.config.gae_tau * (1 - self.dones[step + 1]) * gae
             self.returns[step] = gae + values[step]
   return GAE

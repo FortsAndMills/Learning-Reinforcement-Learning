@@ -2,6 +2,7 @@ from .replayBuffer import *
 
 def NstepReplay(parclass):
   """Requires parclass inherited from ReplayBufferAgent"""
+  
   class NstepReplay(parclass):
     """
     Stores transitions more than on one step.
@@ -10,18 +11,19 @@ def NstepReplay(parclass):
         replay_buffer_nsteps - N steps, int
     """
     __doc__ += parclass.__doc__
+    PARAMS = parclass.PARAMS | {"replay_buffer_nsteps"}
     
     def __init__(self, config):
         super().__init__(config)
         
-        self.replay_buffer_nsteps = config["replay_buffer_nsteps"]
+        self.config.setdefault("replay_buffer_nsteps", 3)
         self.nstep_buffer = []
     
     def memorize(self, state, action, reward, next_state, done):        
         self.nstep_buffer.append((state, action, reward, next_state, np.ones(action.shape, dtype=bool)))
         
-        if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
-            nstep_reward = sum([self.nstep_buffer[i][2] * (self.gamma**i) for i in range(self.replay_buffer_nsteps)])
+        if len(self.nstep_buffer) >= self.config.replay_buffer_nsteps:      
+            nstep_reward = sum([self.nstep_buffer[i][2] * (self.config.gamma**i) for i in range(self.config.replay_buffer_nsteps)])
             state, action, _, _, actual = self.nstep_buffer.pop(0)
             super().memorize(state[actual], action[actual], nstep_reward[actual], next_state[actual], done[actual])
             
@@ -41,8 +43,10 @@ def NstepReplay(parclass):
   
 
 def CollectiveNstepReplayBufferAgent(parclass):
-  """Requires parclass inherited from ReplayBufferAgent.
-  Already inherits from NstepReplay"""
+  """
+  Requires parclass inherited from ReplayBufferAgent.
+  Already inherits from NstepReplay
+  """
   
   class CollectiveNstepReplayBufferAgent(NstepReplay(parclass)):
     """
@@ -60,7 +64,7 @@ def CollectiveNstepReplayBufferAgent(parclass):
             actual = self.nstep_buffer[i][-1]
             ReplayBufferAgent.memorize(self, self.nstep_buffer[i][0][actual], self.nstep_buffer[i][1][actual], R[actual], next_state[actual], done[actual])           
         
-        if len(self.nstep_buffer) >= self.replay_buffer_nsteps:      
+        if len(self.nstep_buffer) >= self.config.replay_buffer_nsteps:      
             self.nstep_buffer.pop(0)
             
         for i in range(len(self.nstep_buffer)):
