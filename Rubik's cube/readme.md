@@ -35,4 +35,4 @@
 
 ### A2C / GAE:
 
-Policy Gradient-алгоритмам тут, кажется, совсем плохо становится.
+Policy Gradient-алгоритмам тут, кажется, совсем плохо становится (полный код: https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Rubik's%20cube/GAE%20on%20Rubik....ipynb)
