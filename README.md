@@ -38,13 +38,14 @@ specially for my beloved scientific advisor:
 * **22/11/18** Found a simple way of slightly accelerating double DQN and A2C by simply reducing amount of forward passes through the network. Haven't seen this trick in other implementations, funny. Uploaded the optimized code.
 * **22/11/18** Experiment: backward experience replay. Works with Categorical DQN (which corresponds to theory), but doesn't provide any significant advancement to vanilla Categorical DQN. Added Backwards Replay to the library.
 * **22/11/18** Implemented: GAE.
-* **28/11/18** Epic fail of the week: [this wonder](https://github.com/Unity-Technologies/ml-agents) failed to launch due to some TCP-sockets conflict... Days of fightings wasted :( :{ :[
+* **28/11/18** Epic fail of the week: [this wonder](https://github.com/Unity-Technologies/ml-agents) failed to launch due to some TCP-sockets conflict... Days of fightings wasted :( :{ :\[
 * **29/11/18** Implemented: DDPG, continuous control support, Factorized Gaussian policy for continuous PG algorithms. Library code revisited, fat bug in Categorical+Prioritized Replay catched!
+* **01/12/18** Theory update: QR-DQN.
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
 * Check other environments.
-* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: Quantile Regression, DQRN, TRPO/PPO, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
+* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: DQRN, TRPO/PPO, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
 * Continue implementing algorithms to the library (next: TRPO / PPO)
 * Check code from other sources (Yandex Practical RL, OpenAI baselines, ...).
 
