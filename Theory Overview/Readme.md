@@ -9,6 +9,7 @@
 * Noisy Networks
 * Categorical DQN
 * Rainbow DQN
+* Quantile Regression DQN
 
 ## Part 2. Policy Gradient
 
@@ -21,4 +22,4 @@
 
 * Continuous Control (DDPG)
 * Hindsight Experience Replay (HER)
-* *TODO:* model-based algorithms
+* *TODO:* model-based algorithms?
