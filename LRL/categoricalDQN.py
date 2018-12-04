@@ -1,5 +1,41 @@
 from .DQN import *
 
+class CategoricalQnetworkHead(QnetworkHead):
+    '''Abstract class for q-network heads for categorical DQN'''
+        
+    def greedy(self, output):
+        return (output * self.config.support).sum(2).max(1)[1]
+    
+    def gather(self, output, action_b):
+        return output.gather(1, action_b.unsqueeze(1).unsqueeze(1).expand(output.size(0), 1, output.size(2))).squeeze(1)
+    
+    def value(self, output):
+        return self.gather(output, self.greedy(output))
+
+class CategoricalQnetwork(CategoricalQnetworkHead):
+    '''Simple categorical DQN head'''
+    def __init__(self, config, name):
+        super().__init__(config, name)       
+        self.head = self.linear(self.feature_size, config.num_actions * config.num_atoms) 
+        
+    def forward(self, state):
+        state = self.feature_extractor_net(state)
+        return F.softmax(self.head(state).view(-1, self.config.num_actions, self.config.num_atoms), dim=-1)
+        
+class DuelingCategoricalQnetwork(CategoricalQnetworkHead):
+    '''Dueling version of categorical DQN head'''
+    def __init__(self, config, name):
+        super().__init__(config, name)    
+        self.v_head = self.linear(self.feature_size, config.num_atoms)
+        self.a_head = self.linear(self.feature_size, config.num_actions * config.num_atoms)    
+        
+    def forward(self, state):
+        state = self.feature_extractor_net(state)
+        v = self.v_head(state).view(-1, 1, self.config.num_atoms)
+        a = self.a_head(state).view(-1, self.config.num_actions, self.config.num_atoms)
+        outp = v + a - a.mean(dim=1, keepdim=True)
+        return F.softmax(outp, dim=-1)
+
 def CategoricalQAgent(parclass):
   """Requires parent class, inherited from Agent.
   Already inherits from QAgent"""

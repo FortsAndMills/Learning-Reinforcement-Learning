@@ -1,5 +1,48 @@
 from .utils import *
 from .network_heads import *
+       
+class ActorCriticHead(Head):
+    '''Actor-critic with shared feature extractor'''
+    def __init__(self, config, name):
+        super().__init__(config, name)
+        
+        self.actor_head = self.linear(self.feature_size, config.num_actions)      
+        self.critic_head = self.linear(self.feature_size, 1)
+        
+    def forward(self, state):
+        features = self.feature_extractor_net(state)
+        return Categorical(logits=self.actor_head(features)), self.critic_head(features)
+        
+class SeparatedActorCriticHead(Head):
+    '''Separate two nets for actor-critic '''
+    def __init__(self, config, name):
+        super().__init__(config, name)
+        
+        self.head = self.linear(self.feature_size, config.num_actions)
+        
+        self.critic = nn.Sequential(
+            config[name + "_FeatureExtractor"](self.linear),
+            self.linear(self.feature_size, 1)
+        )
+        
+    def forward(self, state):
+        value = self.critic(state)
+        probs = self.head(self.feature_extractor_net(state))
+        return Categorical(logits=probs), value
+
+class FactorizedNormalActorCriticHead(Head):
+    '''Actor-critic with shared feature extractor for continious action space'''
+    '''Policy p(a | s) is approximated with factorized gaussian'''
+    def __init__(self, config, name):
+        super().__init__(config, name)
+        
+        self.actor_head_mu = self.linear(self.feature_size, config.num_actions)
+        self.actor_head_sigma = self.linear(self.feature_size, config.num_actions)      
+        self.critic_head = self.linear(self.feature_size, 1)
+        
+    def forward(self, state):
+        features = self.feature_extractor_net(state)
+        return Normal(self.actor_head_mu(features), self.actor_head_sigma(features)**2), self.critic_head(features)
 
 def A2C(parclass):
   """Requires parent class, inherited from Agent."""

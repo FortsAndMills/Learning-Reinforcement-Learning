@@ -1,5 +1,39 @@
 from .DQN import *
 
+class DDPG_Actor(Head):
+    def __init__(self, config, name):
+        super().__init__(config, name)
+        
+        self.head = nn.Sequential(
+            self.linear(self.feature_size, config.num_actions),
+            nn.Tanh()
+        )
+        
+    def forward(self, state):
+        return self.head(self.feature_extractor_net(state)).view(-1, *self.config.actions_shape)
+
+class DDPG_Critic(QnetworkHead):
+    def __init__(self, config, name):
+        super().__init__(config, name)
+        
+        self.head = self.linear(self.feature_size, 1)
+        
+    def get_feature_size(self):
+        return self.feature_extractor_net(Tensor(size=(10, *self.config["observation_shape"])),
+                                          Tensor(size=(10, *self.config["actions_shape"]))).size()[1]
+        
+    def forward(self, state):
+        return state
+    
+    def greedy(self, output):
+        return self.config["actor"](output)
+        
+    def gather(self, output, action_b):
+        return self.head(self.feature_extractor_net(output, action_b)).squeeze(dim=1)
+    
+    def value(self, output):
+        return self.head(self.feature_extractor_net(output, self.greedy(output))).squeeze(dim=1)
+
 def DDPG_QAgent(parclass):
   """Requires parent class, inherited from Agent.
   Already inherits from QAgent"""

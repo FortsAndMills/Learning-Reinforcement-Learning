@@ -1,6 +1,42 @@
 from .utils import *
 from .network_heads import *
 
+class QnetworkHead(Head):
+    def greedy(self, output):
+        '''returns greedy action based on output of net'''
+        return output.max(1)[1]
+        
+    def gather(self, output, action_b):
+        '''returns output of net for given batch of actions'''
+        return output.gather(1, action_b.unsqueeze(1)).squeeze(1)
+    
+    def value(self, output):
+        '''returns output for greedily-chosen action'''
+        return output.max(1)[0]
+
+class Qnetwork(QnetworkHead):
+    '''Simple Q-network head'''
+    def __init__(self, config, name): 
+        super().__init__(config, name)      
+        self.head = self.linear(self.feature_size, config.num_actions)
+        
+    def forward(self, state):
+        state = self.feature_extractor_net(state)
+        return self.head(state)
+        
+class DuelingQnetwork(QnetworkHead):
+    '''Dueling version of Q-network head'''
+    def __init__(self, config, name): 
+        super().__init__(config, name)       
+        self.v_head = self.linear(self.feature_size, 1)
+        self.a_head = self.linear(self.feature_size, config.num_actions)
+        
+    def forward(self, state):
+        state = self.feature_extractor_net(state)
+        v = self.v_head(state)
+        a = self.a_head(state)
+        return v + a - a.mean(dim=1, keepdim=True)
+
 def QAgent(parclass):
   """Requires parent class, inherited from Agent."""
     

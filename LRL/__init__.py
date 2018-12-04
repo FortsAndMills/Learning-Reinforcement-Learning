@@ -16,6 +16,7 @@ from .backwardBufferAgent import *
 
 from .DQN import *
 from .categoricalDQN import *
+from .QRDQN import *
 from .DDPG import *
 from .targetDQN import *
 from .doubleDQN import *
