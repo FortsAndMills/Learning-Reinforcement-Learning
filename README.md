@@ -41,6 +41,7 @@ specially for my beloved scientific advisor:
 * **28/11/18** Epic fail of the week: [this wonder](https://github.com/Unity-Technologies/ml-agents) failed to launch due to some TCP-sockets conflict... Days of fightings wasted :( :{ :\[
 * **29/11/18** Implemented: DDPG, continuous control support, Factorized Gaussian policy for continuous PG algorithms. Library code revisited, fat bug in Categorical+Prioritized Replay catched!
 * **01/12/18** Theory update: QR-DQN.
+* **04/12/18** Implemented: QR-DQN.
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
