@@ -10,13 +10,15 @@
 * Categorical DQN
 * Rainbow DQN
 * Quantile Regression DQN
+* *TODO:* IQN, Soft Q-learning 
 
 ## Part 2. Policy Gradient
 
 * REINFORCE
 * Advantage Actor-Critic (A2C)
 * Generalized Advantage Estimation (GAE)
-* *TODO:* TRPO, PPO
+* Trust-Region Policy Optimization (TRPO)
+* *TODO:* PPO, ACKTR
 
 ## Part 3. Advanced Topics
 
