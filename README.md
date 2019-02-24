@@ -43,11 +43,12 @@ specially for my beloved scientific advisor:
 * **01/12/18** Theory update: QR-DQN.
 * **04/12/18** Implemented: QR-DQN.
 * **16/12/18** Some ideas tested (code in "Experimental" folder), nothing works as always.
+* **24/02/19** Back to the game: theory on TRPO and underlying natural gradients foundations.
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
 * Check other environments.
-* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: DQRN, TRPO/PPO, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
+* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: DQRN, PPO, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
 * Continue implementing algorithms to the library (next: TRPO / PPO)
 * Check code from other sources (Yandex Practical RL, OpenAI baselines, ...).
 
