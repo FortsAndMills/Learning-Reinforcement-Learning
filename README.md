@@ -44,6 +44,7 @@ specially for my beloved scientific advisor:
 * **04/12/18** Implemented: QR-DQN.
 * **16/12/18** Some ideas tested (code in "Experimental" folder), nothing works as always.
 * **24/02/19** Back to the game: theory on TRPO and underlying natural gradients foundations.
+* **26/02/19** Attempt to rewrite the library in different paradigm failed... :/ Code revision. Implemented: Twin DQN.
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
