@@ -23,12 +23,16 @@ class BackwardBufferAgent(Agent):
         self.pos = 0
         self.game_playing_ids = [None for i in range(self.config.batch_size)]
         self.sampling_index = [(0, 0) for i in range(self.config.batch_size)]
+        
+    def reset(self):
+        super().reset()
+        self.game_playing_ids = [None for i in range(self.config.batch_size)]
     
     def memorize_transition(self, state, action, reward, next_state, done, game_id):
         """
         Remember given transition:
         input: state - numpy array, (observation_shape)
-        input: action - float or int
+        input: action - numpy array, (action_shape)
         input: reward - float
         input: next_state - numpy array, (observation_shape)
         input: done - 0 or 1
@@ -43,7 +47,7 @@ class BackwardBufferAgent(Agent):
         """
         Remember batch of transitions:
         input: state - numpy array, (num_envs x observation_shape)
-        input: action - numpy array of ints or floats, (num_envs)
+        input: action - numpy array of ints or floats, (num_envs x action_shape)
         input: reward - numpy array, (num_envs)
         input: next_state - numpy array, (num_envs x observation_shape)
         input: done - numpy array, 0 and 1, (num_envs)
@@ -95,17 +99,19 @@ class BackwardBufferAgent(Agent):
     
     def update_priorities(self, batch_priorities):
         pass
-        
+    
     def __len__(self):
         return sum([len(game_buffer) for game_buffer in self.buffer])
     
     def read_memory(self, mem_f):
         self.buffer = pickle.load(mem_f)
         self.pos = pickle.load(mem_f)
+        self.sampling_index = pickle.load(self.sampling_index)
     
     def write_memory(self, mem_f):
         pickle.dump(self.buffer, mem_f)
         pickle.dump(self.pos, mem_f)
+        pickle.dump(self.sampling_index, mem_f)
     
     def save(self, name, save_replay_memory=False):
         super().save(name)
@@ -122,4 +128,3 @@ class BackwardBufferAgent(Agent):
             mem_f = open(name + "-memory", 'rb')
             self.read_memory(mem_f)
             mem_f.close()
-            

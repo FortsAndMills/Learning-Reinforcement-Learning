@@ -9,7 +9,6 @@ class Agent(Logger):
         env - environment
         make_env - function returning function to create a new instance of environment. Accepts seed (int) as parameter
         threads - number of environments to create with make_envs, int
-        seed - seed for torch, numpy, torch.cuda and environments, int
     """
     
     PARAMS = {"env", "make_env", "threads", "seed"}
@@ -28,25 +27,13 @@ class Agent(Logger):
             # Else create different environment instances.
             try:
                 if config.get("threads", 1) == 1:
-                    self.env = DummyVecEnv([config["make_env"](config.get("seed", 0))])
+                    self.env = DummyVecEnv([config["make_env"]()])
                 else:
-                    self.env = SubprocVecEnv([config["make_env"](config.get("seed", 0) + i) for i in range(config["threads"])])
+                    self.env = SubprocVecEnv([config["make_env"]() for _ in range(config["threads"])])
             except:
                 raise Exception("Error during environments creation. Try to run make_env(0) to find the bug!")
         else:
             raise Exception("Environment env or function make_env is not provided")
-            
-        # I do not understand this?..
-        if self.env.num_envs > 1:
-            torch.set_num_threads(1)
-        
-        # setting seed. Is it really helping in reproducing experiments?!
-        # with cuda=async and SubprocVecEnv it can't help in principle.
-        if "seed" in config:
-            np.random.seed(config["seed"])
-            torch.manual_seed(config["seed"])
-            if torch.cuda.is_available():
-                torch.cuda.manual_seed(config["seed"])
         
         # useful config updates
         self.config["observation_shape"] = self.env.observation_space.shape
@@ -65,6 +52,10 @@ class Agent(Logger):
         
         self.logger_labels["rewards"] = ("episode", "reward")
         self.logger_labels["fps"] = ("training epoch", "FPS")
+    
+    def reset(self):
+        """Called when training is reset and environment is reset before done=True"""
+        pass
     
     def act(self, state, record=False):
         """
@@ -85,7 +76,6 @@ class Agent(Logger):
         input: done - numpy array, 0 and 1, (num_envs)
         """
         self.frames_done += self.env.num_envs
-        self.log()
         
     def record_init(self):
         """Initialize self.record for recording game"""
@@ -151,6 +141,7 @@ class Agent(Logger):
             self.ob = self.env.reset()       
             self.prev_ob = self.ob
             self.R = np.zeros((self.env.num_envs), dtype=np.float32)
+            self.reset()
             self.initialized = True
         
         self.is_learning = True
@@ -163,8 +154,8 @@ class Agent(Logger):
             try:
                 self.ob, r, done, info = self.env.step(a)
             except:
-                print(a)
-                raise Exception("Broken pipe...")
+                print("Last actions: ", a)
+                raise Exception("Error during environment step. May be wrong format for actions?")
             
             self.see(self.prev_ob, a, r, self.ob, done)
             

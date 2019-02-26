@@ -22,21 +22,6 @@ class QuantileQnetwork(QuantileQnetworkHead):
         state = self.feature_extractor_net(state)
         return self.head(state).view(-1, self.config.num_actions, self.config.quantiles)
 
-'''
-class DuelingCategoricalQnetwork(CategoricalQnetworkHead):
-    def __init__(self, config, name):
-        super().__init__(config, name)    
-        self.v_head = self.linear(self.feature_size, config.num_atoms)
-        self.a_head = self.linear(self.feature_size, config.num_actions * config.num_atoms)    
-        
-    def forward(self, state):
-        state = self.feature_extractor_net(state)
-        v = self.v_head(state).view(-1, 1, self.config.num_atoms)
-        a = self.a_head(state).view(-1, self.config.num_actions, self.config.num_atoms)
-        outp = v + a - a.mean(dim=1, keepdim=True)
-        return F.softmax(outp, dim=-1)
-'''
-
 def QuantileQAgent(parclass):
   """Requires parent class, inherited from Agent.
   Already inherits from QAgent"""

@@ -28,6 +28,8 @@ class PrioritizedBufferAgent(ReplayBufferAgent):  # TODO check if sumtree works 
                 
         self.rp_beta_by_frame = lambda frame_idx: min(1.0, 
                 self.config.rp_beta_start + frame_idx * (1.0 - self.config.rp_beta_start) / self.config.rp_beta_frames)
+                
+        self.logger_labels["median weight"] = ("training iteration", "median weight")
 
     def memorize_transition(self, state, action, reward, next_state, done):
         # new transition is stored with max priority
@@ -53,6 +55,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):  # TODO check if sumtree works 
         weights /= (probs.min()) ** (-self.rp_beta_by_frame(self.frames_done))
        
         states, actions, rewards, next_states, dones = zip(*samples)
+        self.logger["median weight"].append(np.median(weights))
         return np.concatenate(states), actions, rewards, np.concatenate(next_states), dones, weights
 
     def update_priorities(self, batch_priorities):

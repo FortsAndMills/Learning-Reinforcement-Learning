@@ -67,7 +67,7 @@ def orthogonal_with_zero_bias_init(module, gain=1):
 
 # MORE BEAUTIFUL CODE, but works worse. Initialization is in question!
 # This code's author says nn.Linear initialisation is ok here... 
-class NoisyLinearWTF(nn.Linear):
+class BasicNoisyLinear(nn.Linear):
     """
     NoisyNet layer with factorized gaussian noise
     """

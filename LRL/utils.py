@@ -64,7 +64,7 @@ def show_frames_and_distribution(frames, distributions, name, support):
     plt.title(name)
     action_patches = []
     for a in range(distributions.shape[1]):
-        action_patches.append(plt.bar(support, distributions[0][a]))
+        action_patches.append(plt.bar(support, distributions[0][a], width=support[1]-support[0]))
 
     def animate(i):
         patch.set_data(frames[i])
@@ -80,7 +80,7 @@ def sliding_average(a, window_size):
     """one-liner for sliding average for array a with window size window_size"""
     return np.convolve(np.concatenate([np.ones((window_size - 1)) * a[0], a]), np.ones((window_size))/window_size, mode='valid')
 
-def plot_durations(agent, means_window=100, points_limit=750000):
+def plot_durations(agent, means_window=100, points_limit=10000):
     """plot agent logs"""    
     clear_output(wait=True)    
     
@@ -95,20 +95,23 @@ def plot_durations(agent, means_window=100, points_limit=750000):
         print("No logs in logger yet...")
         return
     
-    plt.figure(2, figsize=(7.5 * ((len(plots) + 1) // 2), 7))
+    plt.figure(2, figsize=(11, 4 * ((len(plots) + 1) // 2)))
     plt.title('Training...')
     
+    axes = []
     for i, plot_labels in enumerate(plots.keys()):
-        plt.subplot((len(plots) + 1) // 2, 2, i + 1)
+        axes.append(plt.subplot((len(plots) + 1) // 2, 2, i + 1))
         plt.xlabel(plot_labels[0])
         plt.ylabel(plot_labels[1])        
     
     for key, value in agent.logger.items():
-        plt.subplot((len(plots) + 1) // 2, 2, plots[agent.logger_labels[key]] + 1)
-        plt.plot(value[-points_limit:])
+        ax = axes[plots[agent.logger_labels[key]]]
+        k = len(value) // points_limit + 1
+        ax.plot(np.arange(len(value))[::k], value[::k], label=key)
+        ax.legend()
         
         if key == "rewards":
-            plt.plot(sliding_average(value, means_window)[-points_limit:])
+            ax.plot(sliding_average(value, means_window)[-points_limit:])
         if key == "fps":
-            plt.title("Current FPS: " + str(agent.logger["fps"][-1]))
+            ax.set_title("Current FPS: " + str(agent.logger["fps"][-1]))
     plt.show()

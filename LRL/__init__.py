@@ -18,6 +18,7 @@ from .DQN import *
 from .categoricalDQN import *
 from .QRDQN import *
 from .DDPG import *
+from .twinDQN import *
 from .targetDQN import *
 from .doubleDQN import *
 
@@ -25,3 +26,4 @@ from .A2C import *
 from .GAE import *
 
 from .eGreedy import *
+from .OUNoise import *

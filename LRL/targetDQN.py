@@ -16,10 +16,10 @@ def TargetQAgent(parclass):
     def __init__(self, config):
         super().__init__(config)
 
-        self.target_net = self.config.QnetworkHead(self.config, "Qnetwork").to(device)
+        self.target_net = self.config.QnetworkHead(self.config, "Qnetwork").to(device)  # It is not correct for DDPG.
         self.unfreeze()
 
-        config.setdefault("target_update", 100)
+        self.config.setdefault("target_update", 100)
 
     def unfreeze(self):
         '''copy policy net weights to target net'''

@@ -51,9 +51,6 @@ def QAgent(parclass):
         batch_size - size of batch for optimization on each frame, int
         replay_buffer_init - size of buffer launching q-network optimization
         optimize_iterations - number of gradient descent steps after one transition, can be fractional, float
-        optimizer - class inherited from torch.optimizer, Adam by default
-        optimizer_args - arguments for optimizer, dictionary
-        grad_norm_max - max norm of gradients for clipping, float
     """
     __doc__ += parclass.__doc__
     PARAMS = parclass.PARAMS | Head.PARAMS("Qnetwork") | {"QnetworkHead", "gamma", "batch_size", 
@@ -74,9 +71,6 @@ def QAgent(parclass):
         self.q_net = self.config.QnetworkHead(self.config, "Qnetwork").to(device)
         self.q_net.init_optimizer()
         self.optimize_iteration_charges = 0
-        
-        self.logger_labels["loss"] = ("training iteration", "loss")
-        self.log_net(self.q_net, "Qnetwork")
     
     def act(self, state, record=False):
         self.q_net.eval()
@@ -97,16 +91,15 @@ def QAgent(parclass):
             self.optimize_iteration_charges -= 1
             
             if len(self) >= self.config.replay_buffer_init:
-                self.optimize_model()
+                self.optimize_model(self.q_net)
        
     def estimate_next_state(self, next_state_b):
         '''
         Calculates estimation of next state.
-        May use self.next_state_q, which is an output of self.q_net on next_state_b
         input: next_state_batch - FloatTensor, (batch_size x state_dim)
         output: FloatTensor, batch_size
         '''
-        return self.q_net.value(self.next_state_q)
+        return self.q_net.value(self.q_net(next_state_b))
     
     def batch_target(self, reward_b, next_state_b, done_b):
         '''
@@ -136,40 +129,39 @@ def QAgent(parclass):
         '''
         return loss_b**0.5
 
-    def optimize_model(self):
-        '''One step of Q-network optimization'''        
+    def optimize_model(self, q_network):
+        '''
+        One step of Q-network optimization:
+        input: network - instance of nn.Module
+        '''        
         self.batch = self.sample(self.config.batch_size)
         state_b, action_b, reward_b, next_state_b, done_b, weights_b = self.batch
-        # TODO: weights logging?
 
-        state_b      = Tensor(np.float32(state_b))
-        next_state_b = Tensor(np.float32(next_state_b))
+        state_b      = Tensor(state_b)
+        next_state_b = Tensor(next_state_b)
         action_b     = self.ActionTensor(action_b)
-        reward_b     = Tensor(np.float32(reward_b))
-        done_b       = Tensor(np.float32(done_b))
+        reward_b     = Tensor(reward_b)
+        done_b       = Tensor(done_b)
         weights_b    = Tensor(weights_b)
         
-        # optimizing forward pass through net!
-        self.q_net.train()
-        output = self.q_net(torch.cat([state_b, next_state_b], dim=0))
-        self.state_q, self.next_state_q = torch.split(output, self.config.batch_size, dim=0)
+        q_network.train()
         
         # getting q values for state and next state
-        q_values = self.q_net.gather(self.state_q, action_b)
+        q_values = q_network.gather(q_network(state_b), action_b)
         with torch.no_grad():
             target_q_values = self.batch_target(reward_b, next_state_b, done_b)
             
-        # getting loss and updating transition importances
-        loss_b = self.get_loss(target_q_values, q_values)
-        self.update_priorities(self.get_transition_importance(loss_b).detach().cpu().numpy())
-        
+        # getting loss
+        loss_b = self.get_loss(target_q_values, q_values)        
         assert len(loss_b.shape) == 1, loss_b
+        
+        # updating transition importances
+        self.update_priorities(self.get_transition_importance(loss_b).detach().cpu().numpy())
         
         # making optimization step
         loss = (loss_b * weights_b).mean()
-        self.logger["loss"].append(loss.detach().cpu().numpy())
         
-        self.q_net.optimize(loss)
+        q_network.optimize(loss)
         
     def show_record(self):
         show_frames_and_distribution(self.record["frames"], np.array(self.record["qualities"]), "Qualities", np.arange(self.config["num_actions"]))

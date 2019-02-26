@@ -18,6 +18,10 @@ def NstepReplay(parclass):
         
         self.config.setdefault("replay_buffer_nsteps", 3)
         self.nstep_buffer = []
+        
+    def reset(self):
+        super().reset()
+        self.nstep_buffer = []
     
     def memorize(self, state, action, reward, next_state, done):        
         self.nstep_buffer.append((state, action, reward, next_state, np.ones(action.shape, dtype=bool)))

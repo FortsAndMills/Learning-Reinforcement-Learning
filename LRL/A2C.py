@@ -42,7 +42,7 @@ class FactorizedNormalActorCriticHead(Head):
         
     def forward(self, state):
         features = self.feature_extractor_net(state)
-        return Normal(self.actor_head_mu(features), self.actor_head_sigma(features)**2), self.critic_head(features)
+        return Normal(self.actor_head_mu(features), self.actor_head_sigma(features).log1p()), self.critic_head(features)
 
 def A2C(parclass):
   """Requires parent class, inherited from Agent."""
