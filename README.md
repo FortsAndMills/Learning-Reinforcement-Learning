@@ -45,11 +45,12 @@ specially for my beloved scientific advisor:
 * **16/12/18** Some ideas tested (code in "Experimental" folder), nothing works as always.
 * **24/02/19** Back to the game: theory on TRPO and underlying natural gradients foundations.
 * **26/02/19** Attempt to rewrite the library in different paradigm failed... :/ Code revision. Implemented: Twin DQN.
+* **27/02/19** Theory update: PPO (short version: throw all TRPO theory away)
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
 * Check other environments.
-* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: DQRN, PPO, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
+* Continue theory exploration (minimal program: great list of articles by https://blog.openai.com/spinning-up-in-deep-rl/ ... Still waiting for me: DQRN, ACKTR, ACER, SAC, TD3, REACTOR, APE-X, R2D2)
 * Continue implementing algorithms to the library (next: TRPO / PPO)
 * Check code from other sources (Yandex Practical RL, OpenAI baselines, ...).
 
