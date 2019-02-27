@@ -18,7 +18,8 @@
 * Advantage Actor-Critic (A2C)
 * Generalized Advantage Estimation (GAE)
 * Trust-Region Policy Optimization (TRPO)
-* *TODO:* PPO, ACKTR
+* Proximal Policy Optimization (PPO)
+* *TODO:* ACKTR
 
 ## Part 3. Advanced Topics
 
