@@ -19,7 +19,7 @@
 * Generalized Advantage Estimation (GAE)
 * Trust-Region Policy Optimization (TRPO)
 * Proximal Policy Optimization (PPO)
-* *TODO:* ACKTR
+* *TODO:* ACKTR, ACER, SAC, TD3
 
 ## Part 3. Advanced Topics
 
