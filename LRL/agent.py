@@ -9,9 +9,10 @@ class Agent(Logger):
         env - environment
         make_env - function returning function to create a new instance of environment. Accepts seed (int) as parameter
         threads - number of environments to create with make_envs, int
+        gamma - infinite horizon protection, float, from 0 to 1
     """
     
-    PARAMS = {"env", "make_env", "threads", "seed"}
+    PARAMS = {"env", "make_env", "threads", "gamma"}
         
     def __init__(self, config):
         super().__init__(config)
@@ -36,6 +37,7 @@ class Agent(Logger):
             raise Exception("Environment env or function make_env is not provided")
         
         # useful config updates
+        self.config.setdefault("gamma", 0.99)
         self.config["observation_shape"] = self.env.observation_space.shape
         if isinstance(self.env.action_space, gym.spaces.Discrete):
             self.config["num_actions"] = self.env.action_space.n

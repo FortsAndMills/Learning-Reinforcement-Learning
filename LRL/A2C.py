@@ -1,7 +1,7 @@
 from .utils import *
 from .network_heads import *
        
-class ActorCriticHead(Head):
+class ActorCritic(Head):
     '''Actor-critic with shared feature extractor'''
     def __init__(self, config, name):
         super().__init__(config, name)
@@ -13,7 +13,7 @@ class ActorCriticHead(Head):
         features = self.feature_extractor_net(state)
         return Categorical(logits=self.actor_head(features)), self.critic_head(features)
         
-class SeparatedActorCriticHead(Head):
+class SeparatedActorCritic(Head):
     '''Separate two nets for actor-critic '''
     def __init__(self, config, name):
         super().__init__(config, name)
@@ -30,7 +30,7 @@ class SeparatedActorCriticHead(Head):
         probs = self.head(self.feature_extractor_net(state))
         return Categorical(logits=probs), value
 
-class FactorizedNormalActorCriticHead(Head):
+class FactorizedNormalActorCritic(Head):
     '''Actor-critic with shared feature extractor for continious action space'''
     '''Policy p(a | s) is approximated with factorized gaussian'''
     def __init__(self, config, name):
@@ -56,22 +56,21 @@ def A2C(parclass):
     Args:
         ActorCriticHead - class of Actor-Critic network head, ActorCriticHead or SeparatedActorCriticHead
         rollout - number of frames for one iteration of updating NN weights
-        gamma - infinite horizon protection, float, from 0 to 1
         entropy_loss_weight - weight of additional entropy loss
         critic_loss_weight - weight of critic loss
     """
     __doc__ += parclass.__doc__
-    PARAMS = parclass.PARAMS | Head.PARAMS("ActorCritic") | {"ActorCriticHead", "rollout", "gamma", 
+    PARAMS = parclass.PARAMS | Head.PARAMS("ActorCritic") | {"ActorCriticHead", "rollout", 
                                                              "entropy_loss_weight", "critic_loss_weight"} 
     
     def __init__(self, config):
         super().__init__(config)
         
-        self.config.setdefault("ActorCriticHead", ActorCriticHead)
-        self.config.setdefault("gamma", 0.99)
+        self.config.setdefault("ActorCriticHead", ActorCritic)
         self.config.setdefault("rollout", 5)
         self.config.setdefault("critic_loss_weight", 1)
         self.config.setdefault("entropy_loss_weight", 0)
+        self.config["value_repr_shape"] = ()
         
         self.policy = self.config.ActorCriticHead(self.config, "ActorCritic").to(device)
         self.policy.init_optimizer()
@@ -80,10 +79,8 @@ def A2C(parclass):
         self.rewards = Tensor(size=(self.config.rollout, self.env.num_envs)).zero_()
         self.actions = self.ActionTensor(size=(self.config.rollout + 1, self.env.num_envs, *self.config.actions_shape)).zero_()
         self.dones = Tensor(size=(self.config.rollout + 1, self.env.num_envs)).zero_()
-        self.returns = Tensor(size=(self.config.rollout + 1, self.env.num_envs)).zero_()
         self.step = 0
         
-        self.log_net(self.policy, "policy")
         self.logger_labels["actor_loss"] = ("training iteration", "loss")
         self.logger_labels["critic_loss"] = ("training iteration", "loss")
         self.logger_labels["entropy_loss"] = ("training iteration", "loss")
@@ -114,34 +111,61 @@ def A2C(parclass):
         if self.step == 0:
             self.update()
     
-    def compute_returns(self, values):
+    def compute_returns(self):
         '''
-        Fills self.returns using self.rewards, self.dones
-        input: values - Tensor, (self.rollout + 1, num_processes)
+        Fills self.returns using self.values, self.rewards, self.dones
         '''
-        self.returns[-1] = values[-1]
+        d = len(self.config.value_repr_shape)
+         
+        self.returns[-1] = self.values[-1]
         for step in reversed(range(self.rewards.size(0))):
-            self.returns[step] = self.returns[step + 1] * self.config.gamma * (1 - self.dones[step + 1]) + self.rewards[step]
-    
-    def update(self):
-        """One step of optimization based on rollout memory"""
+            self.returns[step] = self.returns[step + 1] * self.config.gamma * (1 - align(self.dones[step + 1], d)) + align(self.rewards[step], d)
+            
+    def preprocess_rollout(self):
+        """Calculates values, action_log_probs, entropy and returns based on current rollout"""
         self.policy.train()
         
-        dist, values = self.policy(self.observations.view(-1, *self.config.observation_shape))
-        action_log_probs = dist.log_prob(self.actions.view(-1, *self.config.actions_shape))
-
-        values = values.view(self.config.rollout + 1, self.env.num_envs)
-        action_log_probs = action_log_probs.view(self.config.rollout + 1, self.env.num_envs, -1)[:-1].sum(dim=-1)
+        dist, self.values = self.policy(self.observations.view(-1, *self.config.observation_shape))
+        self.action_log_probs = dist.log_prob(self.actions.view(-1, *self.config.actions_shape))#.sum(dim=-1)        
+        self.entropy = dist.entropy()#.sum(dim=-1)
         
-        self.compute_returns(values)
+        self.values = self.values.view(self.config.rollout + 1, self.env.num_envs, *self.config.value_repr_shape)
+        self.action_log_probs = self.action_log_probs.view(self.config.rollout + 1, self.env.num_envs)
         
-        # calculating loss
-        advantages = self.returns[:-1].detach() - values[:-1]
-        critic_loss = advantages.pow(2).mean()
-        actor_loss = -(advantages.detach() * action_log_probs).mean()
-        entropy_loss = dist.entropy().view(self.config.rollout + 1, self.env.num_envs, -1)[:-1].sum(dim=-1).mean()
+        self.returns = torch.zeros_like(self.values)
+        self.compute_returns()
         
-        loss = actor_loss + self.config.critic_loss_weight * critic_loss - self.config.entropy_loss_weight * entropy_loss
+    def optimized_function(self):
+        """
+        Returns value of optimized function for current batch:
+        output: FloatTensor, (rollout, num_envs) 
+        """ 
+        advantages = self.returns_b - self.values_b
+        return -(advantages.detach() * self.action_log_probs_b)
+    
+    def critic_loss(self):
+        """
+        Returns estimation of advantage for current batch:
+        output: FloatTensor, (rollout, num_envs) 
+        """
+        return (self.returns_b.detach() - self.values_b).pow(2)
+        
+    def entropy_loss(self):
+        """
+        Returns entropy for current batch:
+        output: FloatTensor, (rollout, num_envs) 
+        """ 
+        return -self.entropy_b
+        
+    def gradient_ascent_step(self):
+        """Makes one update of policy weights"""
+        
+        # calculating loss        
+        actor_loss = self.optimized_function().mean()
+        critic_loss = self.critic_loss().mean()        
+        entropy_loss = self.entropy_loss().mean()
+        
+        loss = actor_loss + self.config.critic_loss_weight * critic_loss + self.config.entropy_loss_weight * entropy_loss
         
         # making a step of optimization
         self.policy.optimize(loss)
@@ -150,6 +174,19 @@ def A2C(parclass):
         self.logger["actor_loss"].append(actor_loss.item())
         self.logger["critic_loss"].append(critic_loss.item())
         self.logger["entropy_loss"].append(entropy_loss.item())
+    
+    def update(self):
+        """One step of optimization based on rollout memory"""
+        self.preprocess_rollout()
+        
+        # in basic A2C algorithm, batch is constructed using all rollout.
+        # we do not use the last states from environments as we do not know return for it yet.
+        self.returns_b = self.returns[:-1]
+        self.values_b = self.values[:-1]
+        self.action_log_probs_b = self.action_log_probs[:-1]
+        self.entropy_b = self.entropy[:-1]
+        
+        self.gradient_ascent_step()        
         
     def show_record(self):
         show_frames_and_distribution(self.record["frames"], np.array(self.record["policies"])[:, 0:1], "Policy", np.arange(self.config["num_actions"]))

@@ -30,6 +30,14 @@ class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
+        
+def align(tensor, i):
+    """
+    Adds i singleton dimensions to the end of tensor 
+    """
+    for _ in range(i):
+        tensor = tensor[:, None]
+    return tensor
 
 def show_frames(frames):
     """
@@ -80,7 +88,7 @@ def sliding_average(a, window_size):
     """one-liner for sliding average for array a with window size window_size"""
     return np.convolve(np.concatenate([np.ones((window_size - 1)) * a[0], a]), np.ones((window_size))/window_size, mode='valid')
 
-def plot_durations(agent, means_window=100, points_limit=10000):
+def plot_durations(agent, means_window=100, points_limit=1000):
     """plot agent logs"""    
     clear_output(wait=True)    
     
@@ -111,7 +119,7 @@ def plot_durations(agent, means_window=100, points_limit=10000):
         ax.legend()
         
         if key == "rewards":
-            ax.plot(sliding_average(value, means_window)[-points_limit:])
+            ax.plot(np.arange(len(value))[::k], sliding_average(value, means_window)[::k])
         if key == "fps":
             ax.set_title("Current FPS: " + str(agent.logger["fps"][-1]))
     plt.show()

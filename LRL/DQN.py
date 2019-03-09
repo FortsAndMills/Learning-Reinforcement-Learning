@@ -47,7 +47,6 @@ def QAgent(parclass):
     
     Args:
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
-        gamma - infinite horizon protection, float, from 0 to 1
         batch_size - size of batch for optimization on each frame, int
         replay_buffer_init - size of buffer launching q-network optimization
         optimize_iterations - number of gradient descent steps after one transition, can be fractional, float
@@ -60,7 +59,6 @@ def QAgent(parclass):
         super().__init__(config)
         
         self.config.setdefault("QnetworkHead", Qnetwork)
-        self.config.setdefault("gamma", 0.99)
         self.config.setdefault("batch_size", 32)
         self.config.setdefault("replay_buffer_init", 1000)
         self.config.setdefault("optimize_iterations", 1)

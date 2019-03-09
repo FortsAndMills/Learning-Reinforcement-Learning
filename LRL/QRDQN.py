@@ -47,7 +47,7 @@ def QuantileQAgent(parclass):
         
     def batch_target(self, reward_b, next_state_b, done_b):
         next_q_values = self.estimate_next_state(next_state_b)
-        return reward_b[:, None] + (self.config.gamma**self.config.replay_buffer_nsteps) * next_q_values * (1 - done_b)[:, None]
+        return reward_b[:, None] + (self.config.gamma**self.config.replay_buffer_nsteps) * next_q_values * (1 - done_b)[:, None]  # TODO: just add extend_like to original
             
     def get_loss(self, y, guess):
         tau = Tensor((2 * np.arange(self.config.quantiles) + 1) / (2.0 * self.config.quantiles))         
