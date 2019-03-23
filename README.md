@@ -47,6 +47,7 @@ specially for my beloved scientific advisor:
 * **26/02/19** Attempt to rewrite the library in different paradigm failed... :/ Code revision. Implemented: Twin DQN.
 * **27/02/19** Theory update: PPO (short version: throw all TRPO theory away)
 * **09/03/19** Implemented: PPO (sneaky bug was finally detected!). Also uploaded code for Quantile Regression Actor-Critic, which is an experiment on combining improvements of DQN with critic in policy gradient methods.
+* **23/03/19** [Bomb in a bow](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Modern_DRL_Algorithms.pdf) is in preparation... 
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
