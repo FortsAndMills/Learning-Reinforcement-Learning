@@ -6,7 +6,6 @@ from torch.utils.data.sampler import BatchSampler, SubsetRandomSampler
 def PPO(parclass):
   """
   Requires parent class, inherited from A2C.
-  Already inherits from A2C
   """
   class PPO(parclass):
     """
