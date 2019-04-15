@@ -73,9 +73,8 @@ def DDPG_QAgent(parclass):
         # Basic QAgent just optimizes critic!
         super().optimize_model(q_network)
         
-        # Now we need actor optimization. We need only batch of states for that.
-        state_b = Tensor(self.batch[0])
-        weights_b = Tensor(self.batch[-1])
+        # Now we need actor optimization.
+        state_b, weights_b = self.batch[0], self.batch[-1]
         
         loss_b = -q_network.value(state_b)        
         loss = (loss_b * weights_b).mean()

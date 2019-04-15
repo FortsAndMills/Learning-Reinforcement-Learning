@@ -37,12 +37,15 @@ class FactorizedNormalActorCritic(Head):
         super().__init__(config, name)
         
         self.actor_head_mu = self.linear(self.feature_size, config.num_actions)
-        self.actor_head_sigma = self.linear(self.feature_size, config.num_actions)      
+        self.actor_head_sigma = nn.Sequential(
+                            self.linear(self.feature_size, config.num_actions),
+                            nn.Softplus()
+                            )
         self.critic_head = self.linear(self.feature_size, 1)
         
     def forward(self, state):
         features = self.feature_extractor_net(state)
-        return Normal(self.actor_head_mu(features), self.actor_head_sigma(features).log1p()), self.critic_head(features)
+        return Normal(self.actor_head_mu(features), self.actor_head_sigma(features)), self.critic_head(features)
 
 def A2C(parclass):
   """Requires parent class, inherited from Agent."""
@@ -85,14 +88,14 @@ def A2C(parclass):
         self.logger_labels["critic_loss"] = ("training iteration", "loss")
         self.logger_labels["entropy_loss"] = ("training iteration", "loss")
 
-    def act(self, s, record=False):
+    def act(self, s):
         self.policy.eval()
         
         with torch.no_grad():
             dist, values = self.policy(Tensor(s))
             actions = dist.sample()
             
-            if record:
+            if self.is_recording:
                 self.record["policies"].append(dist.probs.cpu().numpy())
                 self.record["values"].append(values.cpu().numpy())
 
@@ -122,12 +125,11 @@ def A2C(parclass):
             self.returns[step] = self.returns[step + 1] * self.config.gamma * (1 - align(self.dones[step + 1], d)) + align(self.rewards[step], d)
             
     def preprocess_rollout(self):
-        """Calculates values, action_log_probs, entropy and returns based on current rollout"""
+        """Calculates action_dist, values, action_log_probs, returns based on current rollout"""
         self.policy.train()
         
-        dist, self.values = self.policy(self.observations.view(-1, *self.config.observation_shape))
-        self.action_log_probs = dist.log_prob(self.actions.view(-1, *self.config.actions_shape))#.sum(dim=-1)        
-        self.entropy = dist.entropy()#.sum(dim=-1)
+        self.action_dist, self.values = self.policy(self.observations.view(-1, *self.config.observation_shape))
+        self.action_log_probs = self.action_dist.log_prob(self.actions.view(-1, *self.config.actions_shape))#.sum(dim=-1)    
         
         self.values = self.values.view(self.config.rollout + 1, self.env.num_envs, *self.config.value_repr_shape)
         self.action_log_probs = self.action_log_probs.view(self.config.rollout + 1, self.env.num_envs)
@@ -181,10 +183,10 @@ def A2C(parclass):
         
         # in basic A2C algorithm, batch is constructed using all rollout.
         # we do not use the last states from environments as we do not know return for it yet.
-        self.returns_b = self.returns[:-1]
-        self.values_b = self.values[:-1]
-        self.action_log_probs_b = self.action_log_probs[:-1]
-        self.entropy_b = self.entropy[:-1]
+        self.returns_b = self.returns[:-1].view(-1)
+        self.values_b = self.values[:-1].view(-1)
+        self.action_log_probs_b = self.action_log_probs[:-1].view(-1)    
+        self.entropy_b = self.action_dist.entropy()[:-1].view(-1)    #TODO .sum(dim=-1) inside?
         
         self.gradient_ascent_step()        
         

@@ -34,28 +34,17 @@ def PPO(parclass):
     def optimized_function(self):
         # advantage is estimated using advantage function for previous policy
         # so we take advantage from original rollout
-        advantages = (self.returns_b - self.values_b).detach()  #self.advantages_b.detach()
+        advantages = (self.returns_b - self.old_values_b).detach()  #self.advantages_b.detach() - КОСТЫЛЬ
         
         # importance sampling for making an update of current policy using samples from old policy
         # the gradients to policy will flow through the numerator.
-        ratio = torch.exp(self.new_action_log_probs_b - self.action_log_probs_b.detach())
+        ratio = torch.exp(self.action_log_probs_b - self.old_action_log_probs_b.detach())
         
         # PPO clipping! Prevents from "too high updates".
         surr1 = ratio * advantages
         surr2 = torch.clamp(ratio, 1.0 - self.config.ppo_clip, 1.0 + self.config.ppo_clip) * advantages
         return -torch.min(surr1, surr2)
-    
-    def critic_loss(self):
-        assert self.returns_b.shape == self.new_values_b.shape, "Values shape failed to coecide with returns!"
-        return (self.returns_b.detach() - self.new_values_b).pow(2)
-        
-    def entropy_loss(self):
-        """
-        Returns entropy for current batch:
-        output: FloatTensor, (rollout, num_envs) 
-        """ 
-        return -self.new_entropy_b
-    
+       
     def update(self):
         """One step of optimization based on rollout memory"""
         with torch.no_grad():
@@ -73,16 +62,16 @@ def PPO(parclass):
             for indices in sampler:
                 # retrieving new batch as part of rollout
                 self.returns_b = self.returns.view(-1, *self.config.value_repr_shape)[indices]
-                self.values_b = self.values.view(-1, *self.config.value_repr_shape)[indices]
-                self.action_log_probs_b = self.action_log_probs.view(-1)[indices]
-                self.entropy_b = self.entropy.view(-1)[indices]
+                self.old_values_b = self.values.view(-1, *self.config.value_repr_shape)[indices]
+                self.old_action_log_probs_b = self.action_log_probs.view(-1)[indices]
+                #self.entropy_b = self.action_dist.entropy().view(-1)[indices]  МОЖНО ВЫКИНУТЬ?
                 #self.advantages_b = self.advantages.view(-1)[indices]  # КОСТЫЛЬ
                 
                 # calculating current value, action_log_prob, entropy
-                dist, self.new_values_b = self.policy(self.observations.view(-1, *self.config.observation_shape)[indices])
-                self.new_values_b = self.new_values_b.squeeze()  # IMPORTANT ([32] - [32, 1] problem)
-                self.new_action_log_probs_b = dist.log_prob(self.actions.view(-1, *self.config.actions_shape)[indices])#.sum(dim=-1)        
-                self.new_entropy_b = dist.entropy()#.sum(dim=-1)
+                dist, self.values_b = self.policy(self.observations.view(-1, *self.config.observation_shape)[indices])
+                self.values_b = self.values_b.squeeze()  # IMPORTANT ([32] - [32, 1] problem)
+                self.action_log_probs_b = dist.log_prob(self.actions.view(-1, *self.config.actions_shape)[indices])#.sum(dim=-1)        
+                self.entropy_b = dist.entropy()#.sum(dim=-1)
                 
                 # performing step
                 self.gradient_ascent_step()

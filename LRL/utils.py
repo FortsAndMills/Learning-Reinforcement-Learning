@@ -30,19 +30,11 @@ class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
-        
-def align(tensor, i):
-    """
-    Adds i singleton dimensions to the end of tensor 
-    """
-    for _ in range(i):
-        tensor = tensor[:, None]
-    return tensor
 
 def show_frames(frames):
     """
     generate animation inline notebook:
-    frames - list of pictures
+    input: frames - list of pictures
     """      
     
     plt.figure(figsize=(frames[0].shape[1] / 72.0, frames[0].shape[0] / 72.0), dpi = 72)
@@ -58,9 +50,10 @@ def show_frames(frames):
 def show_frames_and_distribution(frames, distributions, name, support):
     """
     generate animation inline notebook with distribtuions plot
-    frames - list of pictures
-    distributions - list of arrays of fixed size
-    support - indexes for support of distribution
+    input: frames - list of pictures
+    input: distributions - list of arrays of fixed size
+    input: name - title name
+    input: support - indexes for support of distribution
     """ 
          
     plt.figure(figsize=(frames[0].shape[1] / 34.0, frames[0].shape[0] / 72.0), dpi = 72)
@@ -89,7 +82,11 @@ def sliding_average(a, window_size):
     return np.convolve(np.concatenate([np.ones((window_size - 1)) * a[0], a]), np.ones((window_size))/window_size, mode='valid')
 
 def plot_durations(agent, means_window=100, points_limit=1000):
-    """plot agent logs"""    
+    """
+    plot agent logs;
+    input: means_window - size of sliding window for rewards
+    input: points_limit - maximal number of points to visualise on each plot 
+    """    
     clear_output(wait=True)    
     
     coords = [agent.logger_labels[key] for key in agent.logger.keys()]

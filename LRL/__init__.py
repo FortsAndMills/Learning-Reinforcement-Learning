@@ -22,6 +22,7 @@ from .targetDQN import *
 from .doubleDQN import *
 
 from .A2C import *
+from .TRPO import *
 from .QRAAC import *
 from .PPO import *
 from .GAE import *

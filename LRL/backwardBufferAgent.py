@@ -95,7 +95,12 @@ class BackwardBufferAgent(Agent):
         self.sampling_index = [(game_id, i - 1) if i > 0 else sample_game() for game_id, i in self.sampling_index]
         
         state, action, reward, next_state, done = zip(*[self.buffer[game_id][i] for game_id, i in self.sampling_index])
-        return np.concatenate(state), action, reward, np.concatenate(next_state), done, np.ones((batch_size))
+        return (Tensor(np.concatenate(state)), 
+                self.ActionTensor(action), 
+                Tensor(reward), 
+                Tensor(np.concatenate(next_state)), 
+                Tensor(done), 
+                Tensor(np.ones((batch_size))))
     
     def update_priorities(self, batch_priorities):
         pass

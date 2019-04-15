@@ -18,17 +18,13 @@ def TwinQAgent(parclass):
         self.twin_q_net.init_optimizer()
     
     def estimate_next_state(self, next_state_b):
-        if self.twin_optimized:
-            return self.q_net.value(self.twin_q_net(next_state_b))
-        else:
-            return self.twin_q_net.value(self.q_net(next_state_b))
+        return self.twin_q_net.value(self.q_net(next_state_b))
     
-    def optimize_model(self, network):
-        self.twin_optimized = False
-        super().optimize_model(self.q_net)
-        
-        self.twin_optimized = True        
-        super().optimize_model(self.twin_q_net)
+    def optimize_model(self):
+        super().optimize_model()
+        self.twin_q_net, self.q_net = self.q_net, self.twin_q_net        
+        super().optimize_model()
+        self.twin_q_net, self.q_net = self.q_net, self.twin_q_net
         
     def load(self, name, *args, **kwargs):
         super().load(name, *args, **kwargs)

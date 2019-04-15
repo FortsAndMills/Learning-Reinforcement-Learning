@@ -49,9 +49,15 @@ def QuantileQAgent(parclass):
         next_q_values = self.estimate_next_state(next_state_b)
         return reward_b[:, None] + (self.config.gamma**self.config.replay_buffer_nsteps) * next_q_values * (1 - done_b)[:, None]  # TODO: just add extend_like to original
             
-    def get_loss(self, y, guess):
+    def get_loss(self, guess, q):
+        '''
+        Calculates batch loss
+        input: guess - target, FloatTensor, (batch_size, quantiles)
+        input: q - current model output, FloatTensor, (batch_size, quantiles)
+        output: FloatTensor, (batch_size)
+        '''
         tau = Tensor((2 * np.arange(self.config.quantiles) + 1) / (2.0 * self.config.quantiles))         
-        diff = y.t()[:, :, None] - guess[None]        
+        diff = guess.t()[:, :, None] - q[None]        
         return (diff * (tau.view(1, -1) - (diff < 0).float())).transpose(0,1).mean(1).sum(-1)
         
     def get_transition_importance(self, loss_b):

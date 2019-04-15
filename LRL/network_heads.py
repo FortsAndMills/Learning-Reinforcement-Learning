@@ -85,28 +85,3 @@ class Head(nn.Module):
         
     def forward(self, state):
         raise NotImplementedError()
-    
-    def greedy(self, output):
-        '''
-        Returns greedy action based on output of net
-        input: output - FloatTensor (in format of this head's forward function output)
-        output: LongTensor, (batch_size)
-        '''
-        raise NotImplementedError()
-        
-    def gather(self, output, action_b):
-        '''
-        Returns output of net for given batch of actions
-        input: output - FloatTensor (in format of this head's forward function output)
-        input: action_b - LongTensor (batch_size)
-        output: FloatTensor, head's forward function output for selected actions
-        '''
-        raise NotImplementedError()
-    
-    def value(self, output):
-        '''
-        Returns value of action, chosen greedy
-        input: output - FloatTensor (in format of this head's forward function output)
-        output: FloatTensor, (batch_size)
-        '''
-        raise NotImplementedError()

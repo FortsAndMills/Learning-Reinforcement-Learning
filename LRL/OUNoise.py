@@ -24,7 +24,7 @@ def OUNoise(parclass):
         
         self.noise = self.config.OU_mu * np.ones(self.config.num_actions)
 
-    def act(self, state, record=False):
+    def act(self, state):
         a = super().act(state, record)
         if self.is_learning:
             self.noise += self.config.OU_theta * (self.config.OU_mu - self.noise) + self.config.OU_sigma * np.random.normal(size=self.config.num_actions)

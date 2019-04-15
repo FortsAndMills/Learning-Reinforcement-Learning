@@ -50,8 +50,7 @@ class ReplayBufferAgent(Agent):
         input: reward - numpy array, (num_envs)
         input: next_state - numpy array, (num_envs x observation_shape)
         input: done - numpy array, 0 and 1, (num_envs)
-        """
-        
+        """        
         for s, a, r, ns, d in zip(state, action, reward, next_state, done):
             self.memorize_transition(s, a, r, ns, d)
     
@@ -63,17 +62,22 @@ class ReplayBufferAgent(Agent):
         """
         Generate batch of given size.
         input: batch_size - int
-        output: state_batch - numpy array, (batch_size x state_dim)
-        output: action_batch - numpy array, (batch_size)
-        output: reward_batch - numpy array, (batch_size)
-        output: next_state_batch - numpy array, (batch_size x state_dim)
-        output: done_batch - numpy array, (batch_size)
-        output: weights_batch - numpy array, (batch_size)
+        output: state_batch - Tensor, (batch_size x state_dim)
+        output: action_batch - Tensor, (batch_size)
+        output: reward_batch - Tensor, (batch_size)
+        output: next_state_batch - Tensor, (batch_size x state_dim)
+        output: done_batch - Tensor, (batch_size)
+        output: weights_batch - Tensor, (batch_size)
         """
         state, action, reward, next_state, done = zip(*random.sample(self.buffer, batch_size))
-        return np.concatenate(state), action, reward, np.concatenate(next_state), done, np.ones((batch_size))
+        return (Tensor(np.concatenate(state)), 
+                self.ActionTensor(action), 
+                Tensor(reward), 
+                Tensor(np.concatenate(next_state)), 
+                Tensor(done), 
+                Tensor(np.ones((batch_size))))
     
-    def update_priorities(self, batch_priorities):
+    def update_priorities(self, batch_priorities):  # TODO: what is this thing?
         pass
     
     def __len__(self):
@@ -90,7 +94,7 @@ class ReplayBufferAgent(Agent):
     def save(self, name, save_replay_memory=False):
         super().save(name)
         
-        if save_replay_memory:
+        if save_replay_memory:                        # TODO: doesn't work: memory error.
             mem_f = open(name + "-memory", 'wb')
             self.write_memory(mem_f)
             mem_f.close() 

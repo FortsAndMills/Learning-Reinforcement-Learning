@@ -49,21 +49,21 @@ class Agent(Logger):
             self.ActionTensor = Tensor
         
         # logging and initialization
-        self.initialized = False          
+        self.initialized = False
+        self.is_recording = False       
         self.frames_done = 0
         
         self.logger_labels["rewards"] = ("episode", "reward")
         self.logger_labels["fps"] = ("training epoch", "FPS")
     
     def reset(self):
-        """Called when training is reset and environment is reset before done=True"""
+        """Called when training is reset and environment is reset before meeting done=True"""
         pass
     
-    def act(self, state, record=False):
+    def act(self, state):
         """
         Responce on array of observations of enviroment
         input: state - numpy array, (num_envs x observation_shape)
-        input: record - bool, whether to store in self.record decisions 
         output: actions - list, ints or floats, (num_envs)
         """
         return [self.env.action_space.sample() for _ in range(state.shape[0])]
@@ -83,10 +83,6 @@ class Agent(Logger):
         """Initialize self.record for recording game"""
         self.record = defaultdict(list)
         self.record["frames"].append(self.env.render(mode = 'rgb_array'))
-    
-    def record_step(self):
-        """Record one step of game in self.record"""
-        self.record["frames"].append(self.env.render(mode = 'rgb_array'))
         
     def show_record(self):
         """
@@ -105,6 +101,7 @@ class Agent(Logger):
         """
         self.is_learning = False
         self.initialized = False
+        self.is_recording = record
         
         ob = self.env.reset()
         R = np.zeros((self.env.num_envs), dtype=np.float32)        
@@ -113,13 +110,13 @@ class Agent(Logger):
             self.record_init()
         
         for t in count():
-            a = self.act(ob, record)
+            a = self.act(ob)
             ob, r, done, info = self.env.step(a)
             
             R += r
             
-            if record:                
-                self.record_step()
+            if self.is_recording:                
+                self.record["frames"].append(self.env.render(mode = 'rgb_array'))
             if render:
                 clear_output(wait=True)
                 img = plt.imshow(self.env.render(mode='rgb_array'))
@@ -128,7 +125,7 @@ class Agent(Logger):
             if done[0]:
                 break
                 
-        if record:
+        if self.is_recording:
             self.show_record()
         
         return R[0]
@@ -157,7 +154,7 @@ class Agent(Logger):
                 self.ob, r, done, info = self.env.step(a)
             except:
                 print("Last actions: ", a)
-                raise Exception("Error during environment step. May be wrong format for actions?")
+                raise Exception("Error during environment step. May be wrong action format?")
             
             self.see(self.prev_ob, a, r, self.ob, done)
             

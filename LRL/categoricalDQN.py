@@ -91,9 +91,15 @@ def CategoricalQAgent(parclass):
         proj_dist /= proj_dist.sum(1).unsqueeze(1)
         return proj_dist
 
-    def get_loss(self, y, guess):
-        guess.data.clamp_(0.0001, 0.9999)   # TODO doesn't torch have cross entropy? Taken from source code.
-        return -(y * guess.log()).sum(1)
+    def get_loss(self, guess, q):
+        '''
+        Calculates batch loss
+        input: guess - target, FloatTensor, (batch_size, num_atoms)
+        input: q - current model output, FloatTensor, (batch_size, num_atoms)
+        output: FloatTensor, (batch_size)
+        '''
+        q.data.clamp_(1e-8, 1 - 1e-8)   # TODO doesn't torch have cross entropy? Taken from source code.
+        return -(guess * q.log()).sum(1)
         
     def get_transition_importance(self, loss_b):
         return loss_b
