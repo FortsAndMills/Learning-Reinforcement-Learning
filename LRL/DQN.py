@@ -84,7 +84,10 @@ def QAgent(parclass):
         self.optimize_iteration_charges = 0
     
     def act(self, state):
-        self.q_net.eval()
+        if self.is_learning:
+            self.q_net.train()
+        else:
+            self.q_net.eval()
         
         with torch.no_grad():
             qualities = self.q_net(Tensor(state))

@@ -85,3 +85,6 @@ class Head(nn.Module):
         
     def forward(self, state):
         raise NotImplementedError()
+        
+    def numel(self):
+        return sum(p.numel() for p in self.parameters() if p.requires_grad)

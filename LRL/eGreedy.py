@@ -29,12 +29,12 @@ def eGreedy(parclass):
         if self.is_learning:
             explore = np.random.uniform(0, 1, size=state.shape[0]) <= self.epsilon_by_frame(self.frames_done)
             
-            actions = np.zeros((state.shape[0], *self.config.actions_shape))
-            if explore.sum() > 0:
+            actions = np.zeros((state.shape[0], *self.config.actions_shape), dtype=self.env.action_space.dtype)
+            if explore.any():
                 actions[explore] = np.array([self.env.action_space.sample() for _ in range(explore.sum())])
-            if (~explore).sum() > 0:
+            if (~explore).any():
                 actions[~explore] = super().act(state[~explore])
             return actions
         else:
-            return super().act(state, record)
+            return super().act(state)
   return eGreedy

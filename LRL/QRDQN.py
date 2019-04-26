@@ -21,6 +21,19 @@ class QuantileQnetwork(QuantileQnetworkHead):
     def forward(self, state):
         state = self.feature_extractor_net(state)
         return self.head(state).view(-1, self.config.num_actions, self.config.quantiles)
+        
+class DuelingQuantileQnetwork(QuantileQnetworkHead):
+    '''Dueling version of categorical DQN head'''
+    def __init__(self, config, name):
+        super().__init__(config, name)    
+        self.v_head = self.linear(self.feature_size, self.config.quantiles)
+        self.a_head = self.linear(self.feature_size, self.config.num_actions * self.config.quantiles)    
+        
+    def forward(self, state):
+        state = self.feature_extractor_net(state)
+        v = self.v_head(state).view(-1, 1, self.config.quantiles)
+        a = self.a_head(state).view(-1, self.config.num_actions, self.config.quantiles)
+        return v + a - a.mean(dim=1, keepdim=True)
 
 def QuantileQAgent(parclass):
   """Requires parent class, inherited from Agent.

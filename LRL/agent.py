@@ -91,14 +91,17 @@ class Agent(Logger):
         """
         show_frames(self.record["frames"])
     
-    def play(self, render=False, record=False):
+    def play(self, render=False, record=False, show_record=True):
         """
         Reset environment and play one game.
         If env is vectorized, first environment's game will be recorded.
         input: render - bool, whether to draw game inline (can be rendered in notebook)
-        input: record - bool, whether to store the game and show aftermath as animation
+        input: record - bool, whether to store the game and show 
+        input: show_record - bool, whether to show the stored game aftermath as animation
         output: cumulative reward
         """
+        assert (not show_record) or record, "Can't show record if it is not being recorded!" 
+        
         self.is_learning = False
         self.initialized = False
         self.is_recording = record
@@ -117,6 +120,7 @@ class Agent(Logger):
             
             if self.is_recording:                
                 self.record["frames"].append(self.env.render(mode = 'rgb_array'))
+                self.record["reward"].append(r)
             if render:
                 clear_output(wait=True)
                 img = plt.imshow(self.env.render(mode='rgb_array'))
@@ -125,7 +129,7 @@ class Agent(Logger):
             if done[0]:
                 break
                 
-        if self.is_recording:
+        if self.is_recording and show_record:
             self.show_record()
         
         return R[0]
@@ -161,6 +165,7 @@ class Agent(Logger):
             self.R += r
             for res in self.R[done]:
                 self.logger["rewards"].append(res)
+                self.logger["episode ends"].append(self.frames_done)
                 
             self.R[done] = 0
             self.prev_ob = self.ob

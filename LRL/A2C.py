@@ -89,7 +89,10 @@ def A2C(parclass):
         self.logger_labels["entropy_loss"] = ("training iteration", "loss")
 
     def act(self, s):
-        self.policy.eval()
+        if self.is_learning:
+            self.policy.train()
+        else:
+            self.policy.eval()
         
         with torch.no_grad():
             dist, values = self.policy(Tensor(s))

@@ -130,7 +130,7 @@ class PrioritizedBufferAgent(ReplayBufferAgent):  # TODO check if sumtree works 
         Updates priorities for previously sampled batch, indexes stored in self.batch_indices
         input: batch_priorities - np.array, floats, (batch_size)
         """
-        new_batch_priorities = (batch_priorities ** self.config.rp_alpha + 1e-5).clip(max=self.config.clip_priorities)
+        new_batch_priorities = (batch_priorities ** self.config.rp_alpha).clip(min=1e-5, max=self.config.clip_priorities)
         for i, v in zip(self.batch_indices, new_batch_priorities):
             self.priorities.update(i, v) 
         self.max_priority = max(self.max_priority, new_batch_priorities.max())

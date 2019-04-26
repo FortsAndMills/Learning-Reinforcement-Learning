@@ -31,6 +31,14 @@ class AttrDict(dict):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
+def align(tensor, i):
+    """
+    Adds i singleton dimensions to the end of tensor 
+    """
+    for _ in range(i):
+        tensor = tensor[:, None]
+    return tensor
+
 def show_frames(frames):
     """
     generate animation inline notebook:
@@ -89,7 +97,7 @@ def plot_durations(agent, means_window=100, points_limit=1000):
     """    
     clear_output(wait=True)    
     
-    coords = [agent.logger_labels[key] for key in agent.logger.keys()]
+    coords = [agent.logger_labels[key] for key in agent.logger.keys() if key in agent.logger_labels]
     k = 0
     plots = {}
     for p in coords:
@@ -110,13 +118,14 @@ def plot_durations(agent, means_window=100, points_limit=1000):
         plt.ylabel(plot_labels[1])        
     
     for key, value in agent.logger.items():
-        ax = axes[plots[agent.logger_labels[key]]]
-        k = len(value) // points_limit + 1
-        ax.plot(np.arange(len(value))[::k], value[::k], label=key)
-        ax.legend()
-        
-        if key == "rewards":
-            ax.plot(np.arange(len(value))[::k], sliding_average(value, means_window)[::k])
-        if key == "fps":
-            ax.set_title("Current FPS: " + str(agent.logger["fps"][-1]))
+        if key in agent.logger_labels:
+            ax = axes[plots[agent.logger_labels[key]]]
+            k = len(value) // points_limit + 1
+            ax.plot(np.arange(len(value))[::k], value[::k], label=key)
+            ax.legend()
+            
+            if key == "rewards":
+                ax.plot(np.arange(len(value))[::k], sliding_average(value, means_window)[::k])
+            if key == "fps":
+                ax.set_title("Current FPS: " + str(agent.logger["fps"][-1]))
     plt.show()
