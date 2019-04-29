@@ -50,7 +50,7 @@ specially for my beloved scientific advisor:
 * **28/03/19** [Draft of theoretical part of course work](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Modern_DRL_Algorithms.pdf) is written. 
 * **15/04/19** TRPO implementation still does not work :o(. Prioritized experience replay rewritten with SumTree structure for substantial acceleration. NoisyNetwork has initialisation issues; switched implementations. Many minor changes in code structure and refactoring.
 * **15/04/19** Uploaded "LRL Pong.ipynb" with launches of all compared algorithms (with 1 000 000 samples limitation): vanilla DQN, c51 (categorical DQN), quantile regression (QR-DQN), rainbow, A2C (with GAE), PPO. 
-* **29/04/19** Uploaded prefinished course work text.
+* **29/04/19** Uploaded [prefinished course work text](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Modern_DRL_Algorithms.pdf).
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
