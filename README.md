@@ -1,5 +1,5 @@
 # Learning Reinforcement Learning:
-Algorithms from DQN to Rainbow, GAE, DDPG with unified interface.
+Algorithms from DQN to Rainbow, PPO, DDPG with unified interface.
 
 * **Theory overview**: [Theory Overview](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/tree/master/Theory%20Overview) - conspect of articles about implemented algorithms.
 * **LRL Demo**: [LRL demo.ipynb](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/LearningRL%20-%20Demo.ipynb) Library interface guide.
@@ -50,6 +50,7 @@ specially for my beloved scientific advisor:
 * **28/03/19** [Draft of theoretical part of course work](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Modern_DRL_Algorithms.pdf) is written. 
 * **15/04/19** TRPO implementation still does not work :o(. Prioritized experience replay rewritten with SumTree structure for substantial acceleration. NoisyNetwork has initialisation issues; switched implementations. Many minor changes in code structure and refactoring.
 * **15/04/19** Uploaded "LRL Pong.ipynb" with launches of all compared algorithms (with 1 000 000 samples limitation): vanilla DQN, c51 (categorical DQN), quantile regression (QR-DQN), rainbow, A2C (with GAE), PPO. 
+* **29/04/19** Uploaded prefinished course work text.
 
 ### PLANS:
 * Find out how to properly fix seeds for experiments (setting seeds in numpy, torch, torch.cuda and in environments... didn't help! Even when no asynchronity is used!..)
