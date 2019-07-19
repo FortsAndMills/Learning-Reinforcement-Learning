@@ -1,7 +1,7 @@
 # Learning Reinforcement Learning:
 Algorithms from DQN to Rainbow, PPO, DDPG with unified interface.
 
-* **Full text**: [Modern Deep Reinforcement Learning Algorithms](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/Modern_DRL_Algorithms.pdf)
+* **Full text**: [Modern Deep Reinforcement Learning Algorithms](https://arxiv.org/abs/1906.10025)
 * **Theory overview (slides)**: [Theory Overview](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/tree/master/Theory%20Overview) - some conspect of articles about implemented algorithms.
 * **LRL Demo**: [LRL demo.ipynb](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/LearningRL%20-%20Demo.ipynb) Library interface guide.
 * **LRL Cartpole**: [LRL Playing with cartpole.ipynb](https://github.com/FortsAndMills/Learning-Reinforcement-Learning/blob/master/LRL%20Playing%20with%20cartpole.ipynb) - launching a bunch of algorithms on the simplest environment Cartpole.
