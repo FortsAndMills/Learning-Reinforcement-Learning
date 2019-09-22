@@ -1,4 +1,5 @@
 from .logger import *
+from .drawing_tools import *
 from .preprocessing.multiprocessing_env import VecEnv, DummyVecEnv, SubprocVecEnv
 
 class Agent(Logger):
@@ -54,10 +55,10 @@ class Agent(Logger):
         self.frames_done = 0
         
         self.logger_labels["rewards"] = ("episode", "reward")
-        self.logger_labels["fps"] = ("training epoch", "FPS")
+        self.logger_labels["time"] = ("step", "seconds")
     
     def reset(self):
-        """Called when training is reset and environment is reset before meeting done=True"""
+        """Called when environment is reset by force before meeting done=True"""
         pass
     
     def act(self, state):
@@ -72,7 +73,7 @@ class Agent(Logger):
         """
         Learning from new transition observed:
         input: state - numpy array, (num_envs x observation_shape)
-        input: action - numpy array, ints or floats, (num_envs)
+        input: action - numpy array, ints or floats, (num_envs x actions_shape)
         input: reward - numpy array, (num_envs)
         input: next_state - numpy array, (num_envs x observation_shape)
         input: done - numpy array, 0 and 1, (num_envs)
@@ -91,7 +92,7 @@ class Agent(Logger):
         """
         show_frames(self.record["frames"])
     
-    def play(self, render=False, record=False, show_record=True):
+    def play(self, render=False, record=False, show_record=None):
         """
         Reset environment and play one game.
         If env is vectorized, first environment's game will be recorded.
@@ -100,6 +101,8 @@ class Agent(Logger):
         input: show_record - bool, whether to show the stored game aftermath as animation
         output: cumulative reward
         """
+        if show_record is None:
+            show_record = record        
         assert (not show_record) or record, "Can't show record if it is not being recorded!" 
         
         self.is_learning = False
@@ -123,7 +126,7 @@ class Agent(Logger):
                 self.record["reward"].append(r)
             if render:
                 clear_output(wait=True)
-                img = plt.imshow(self.env.render(mode='rgb_array'))
+                plt.imshow(self.env.render(mode='rgb_array'))
                 plt.show()
             
             if done[0]:
@@ -134,10 +137,11 @@ class Agent(Logger):
         
         return R[0]
         
-    def learn(self, frames_limit=1000):
+    def learn(self, frames=10000, plot_frequency=100):
         """
-        Play frames_limit frames for several games in parallel
-        input: frames_limit - int, how many observations to obtain
+        Play frames for several games in parallel
+        input: frames - int, how many observations to obtain
+        input: plot_frequency - int, how often in frames to plot graphics
         """
         
         if not self.initialized:
@@ -149,7 +153,7 @@ class Agent(Logger):
         
         self.is_learning = True
         start = time.time()
-        frames_limit = (frames_limit // self.env.num_envs) * self.env.num_envs    
+        frames_limit = (frames // self.env.num_envs) * self.env.num_envs    
 
         for t in range(frames_limit // self.env.num_envs):
             a = self.act(self.ob)
@@ -169,8 +173,12 @@ class Agent(Logger):
                 
             self.R[done] = 0
             self.prev_ob = self.ob
-        
-        self.logger["fps"].append(frames_limit / (time.time() - start))
+
+            self.logger["time"].append(time.time() - start)
+            start = time.time()
+
+            if (t-1) % (plot_frequency // self.env.num_envs) == 0:
+                plot_durations(self)
     
     def write(self, f):
         super().write(f)

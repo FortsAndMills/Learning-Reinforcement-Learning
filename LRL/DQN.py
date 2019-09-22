@@ -1,6 +1,7 @@
-from .utils import *
+from .drawing_tools import *
 from .network_heads import *
 
+# TODO: assert if output is in a wrong format
 class QnetworkHead(Head):
     def greedy(self, output):
         '''
@@ -61,7 +62,7 @@ def QAgent(parclass):
     Args:
         QnetworkHead - class of Q-network head, inherited from QnetworkHead
         batch_size - size of batch for optimization on each frame, int
-        replay_buffer_init - size of buffer launching q-network optimization
+        replay_buffer_init - size of buffer launching q-network optimization, int
         optimize_iterations - number of gradient descent steps after one transition, can be fractional, float
     """
     __doc__ += parclass.__doc__

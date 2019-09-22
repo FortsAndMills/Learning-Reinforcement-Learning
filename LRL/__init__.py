@@ -3,6 +3,7 @@ from .preprocessing import multiprocessing_env
 from .preprocessing.multiprocessing_env import DummyVecEnv, SubprocVecEnv
 
 from .utils import *
+from .drawing_tools import *
 from .network_modules import *
 from .network_heads import *
 
@@ -29,3 +30,4 @@ from .GAE import *
 
 from .eGreedy import *
 from .OUNoise import *
+from .inverseModel import *

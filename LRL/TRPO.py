@@ -1,6 +1,8 @@
 from .A2C import *
 from torch.nn.utils.convert_parameters import vector_to_parameters, parameters_to_vector
 
+# DOES NOT WORK :(
+
 def TRPO(parclass):
   """Requires parent class, inherited from A2C."""
     

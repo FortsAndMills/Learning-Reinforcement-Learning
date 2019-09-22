@@ -63,7 +63,6 @@ def PPO(parclass):
                 self.returns_b = self.returns.view(-1, *self.config.value_repr_shape)[indices]
                 self.old_values_b = self.values.view(-1, *self.config.value_repr_shape)[indices]
                 self.old_action_log_probs_b = self.action_log_probs.view(-1)[indices]
-                #self.entropy_b = self.action_dist.entropy().view(-1)[indices]  МОЖНО ВЫКИНУТЬ?
                 #self.advantages_b = self.advantages.view(-1)[indices]  # КОСТЫЛЬ
                 
                 # calculating current value, action_log_prob, entropy

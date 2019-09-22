@@ -24,10 +24,15 @@ def eGreedy(parclass):
         
         self.epsilon_by_frame = lambda frame_idx: self.config.epsilon_final + (self.config.epsilon_start - self.config.epsilon_final) * \
                                                                                math.exp(-1. * frame_idx / self.config.epsilon_decay)
+        
+        self.logger_labels["eps"] = ("training iteration", "annealing hyperparameter")
 
     def act(self, state, record=False):
         if self.is_learning:
-            explore = np.random.uniform(0, 1, size=state.shape[0]) <= self.epsilon_by_frame(self.frames_done)
+            eps = self.epsilon_by_frame(self.frames_done)
+            self.logger["eps"].append(eps)
+
+            explore = np.random.uniform(0, 1, size=state.shape[0]) <= eps
             
             actions = np.zeros((state.shape[0], *self.config.actions_shape), dtype=self.env.action_space.dtype)
             if explore.any():

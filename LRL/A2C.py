@@ -137,7 +137,7 @@ def A2C(parclass):
         self.values = self.values.view(self.config.rollout + 1, self.env.num_envs, *self.config.value_repr_shape)
         self.action_log_probs = self.action_log_probs.view(self.config.rollout + 1, self.env.num_envs)
         
-        self.returns = torch.zeros_like(self.values)
+        self.returns = torch.zeros_like(self.values)  # TODO: move to __init__?
         self.compute_returns()
         
     def optimized_function(self):
@@ -177,8 +177,8 @@ def A2C(parclass):
         
         # logging
         self.logger["actor_loss"].append(actor_loss.item())
-        self.logger["critic_loss"].append(critic_loss.item())
-        self.logger["entropy_loss"].append(entropy_loss.item())
+        self.logger["critic_loss"].append(self.config.critic_loss_weight * critic_loss.item())
+        self.logger["entropy_loss"].append(self.config.entropy_loss_weight * entropy_loss.item())
     
     def update(self):
         """One step of optimization based on rollout memory"""
